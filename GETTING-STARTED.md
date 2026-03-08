@@ -281,14 +281,38 @@ Type these in the chat:
 | `/new` | Start a fresh Claude session |
 | `/cancel` | Stop what Claude is doing |
 | `/model opus` | Switch to a more powerful model |
-| `/status` | See project info and cost |
+| `/status` | See project info, tokens, and context usage |
+| `/cost` | See session cost and token breakdown |
+| `/undo` | Revert last file changes |
+| `/diff` | Show uncommitted changes and recent commits |
+
+### Live feedback while Claude works
+
+While Claude processes your message, you'll see real-time updates:
+
+- **Thinking preview** -- Claude's extended reasoning shown live with a brain icon
+- **Streaming text** -- response text appears as it's generated
+- **Tool progress** -- elapsed time shown during long-running operations (e.g., "Bash running... 12s")
+- **Subagent status** -- notifications when Claude spawns and completes subagents
+
+After each response, a usage footer shows tokens used and cost:
+```
+12.5k in · 3.2k out · 8.1k cached · $0.0234
+```
+
+When the context window fills up, you'll see a warning:
+```
+Context 82% full — consider /new
+```
+
+Claude also suggests a follow-up action as a tappable button you can tap to send instantly.
 
 ### Permission approvals
 When Claude wants to edit files, run commands, etc., you get a popup with buttons:
 
-- **Allow** — approve once
-- **Always** — approve this tool for the rest of the session
-- **Deny** — reject
+- **Allow** -- approve once
+- **Always** -- approve this tool for the rest of the session
+- **Deny** -- reject
 
 ---
 

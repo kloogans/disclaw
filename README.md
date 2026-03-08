@@ -15,6 +15,14 @@ Remote Claude Code control via Telegram. Run Claude as a daemon on your Mac and 
 - **Multi-turn conversations** -- send multiple messages that get batched intelligently before sending to Claude
 - **Session management** -- list, resume, and manage past sessions per project
 - **Live response streaming** -- see Claude's response as it types, updated every few seconds
+- **Thinking preview** -- watch Claude's extended reasoning live (brain icon) before the response streams in
+- **Tool progress heartbeats** -- see elapsed time during long-running tool operations
+- **Subagent notifications** -- get notified when Claude spawns and completes subagents
+- **Token usage tracking** -- per-turn token counts (input/output/cached) and cost shown after every response
+- **Context window monitoring** -- see context usage percentage, with warnings at 80%+ to suggest starting fresh
+- **Rate limit warnings** -- proactive alerts when approaching or hitting rate limits
+- **Context compaction status** -- notification when Claude compacts session history
+- **Prompt suggestions** -- tappable inline button with Claude's suggested follow-up after each response
 - **Typing indicator** -- Telegram shows "typing..." while Claude is working
 - **Pinned responses** -- Claude's last response is automatically pinned for easy reference
 - **Git status notifications** -- periodic alerts when your project has uncommitted changes
@@ -147,8 +155,8 @@ These commands are available inside each project's Telegram bot chat:
 | `/diff` | Show uncommitted changes and recent commits |
 | `/sessions` | List past sessions |
 | `/resume <id>` | Resume a previous session |
-| `/status` | Show project info, current model, and session details |
-| `/cost` | Show the cost of the current session |
+| `/status` | Show project info, model, session, token usage, and context window |
+| `/cost` | Show session cost, token breakdown, cache hits, and context usage |
 
 ---
 
