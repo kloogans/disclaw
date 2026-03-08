@@ -8,7 +8,7 @@ import type { WhisperConfig } from "../config/types.js";
 import type pino from "pino";
 
 let whisperInstance: Whisper | null = null;
-let modelLoading = false;
+let loadingPromise: Promise<Whisper> | null = null;
 
 const MODELS_DIR = join(getConfigDir(), "models");
 
@@ -16,47 +16,44 @@ const MODELS_DIR = join(getConfigDir(), "models");
  * Get or initialize the shared Whisper instance.
  * Downloads the model on first use.
  */
+async function loadWhisper(config: WhisperConfig, logger: pino.Logger): Promise<Whisper> {
+  if (!existsSync(MODELS_DIR)) {
+    mkdirSync(MODELS_DIR, { recursive: true });
+  }
+
+  let modelPath = join(MODELS_DIR, `ggml-${config.model}.bin`);
+
+  if (!existsSync(modelPath)) {
+    try {
+      const { manager } = await import("smart-whisper");
+      if (!manager.check(config.model)) {
+        logger.info({ model: config.model }, "Downloading whisper model (first time)...");
+        await manager.download(config.model);
+        logger.info({ model: config.model }, "Whisper model downloaded");
+      }
+      modelPath = manager.resolve(config.model);
+    } catch (err) {
+      throw new Error(`Whisper model not found at ${modelPath} and auto-download failed: ${err}`);
+    }
+  }
+
+  logger.info({ model: config.model, path: modelPath }, "Loading whisper model");
+  whisperInstance = new Whisper(modelPath, { gpu: config.gpu });
+  logger.info("Whisper model loaded");
+
+  return whisperInstance;
+}
+
 async function getWhisper(config: WhisperConfig, logger: pino.Logger): Promise<Whisper> {
   if (whisperInstance) return whisperInstance;
-  if (modelLoading) {
-    // Wait for another caller to finish loading
-    while (modelLoading) {
-      await new Promise((r) => setTimeout(r, 500));
-    }
-    if (whisperInstance) return whisperInstance;
-  }
+  if (loadingPromise) return loadingPromise;
 
-  modelLoading = true;
-  try {
-    if (!existsSync(MODELS_DIR)) {
-      mkdirSync(MODELS_DIR, { recursive: true });
-    }
+  loadingPromise = loadWhisper(config, logger).catch((err) => {
+    loadingPromise = null;
+    throw err;
+  });
 
-    let modelPath = join(MODELS_DIR, `ggml-${config.model}.bin`);
-
-    if (!existsSync(modelPath)) {
-      // Try smart-whisper's built-in manager
-      try {
-        const { manager } = await import("smart-whisper");
-        if (!manager.check(config.model)) {
-          logger.info({ model: config.model }, "Downloading whisper model (first time)...");
-          await manager.download(config.model);
-          logger.info({ model: config.model }, "Whisper model downloaded");
-        }
-        modelPath = manager.resolve(config.model);
-      } catch (err) {
-        throw new Error(`Whisper model not found at ${modelPath} and auto-download failed: ${err}`);
-      }
-    }
-
-    logger.info({ model: config.model, path: modelPath }, "Loading whisper model");
-    whisperInstance = new Whisper(modelPath, { gpu: config.gpu });
-    logger.info("Whisper model loaded");
-
-    return whisperInstance;
-  } finally {
-    modelLoading = false;
-  }
+  return loadingPromise;
 }
 
 /**

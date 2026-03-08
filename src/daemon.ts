@@ -28,19 +28,19 @@ function startBotWithRecovery(
   let retryTimer: ReturnType<typeof setTimeout> | null = null;
   let currentBot: ProjectBot | null = null;
 
+  const slotIndex = bots.length;
+  bots.push(null as any);
+
   const launch = () => {
     if (shuttingDown.value) return;
 
-    // Clear any pending reset timer from a previous instance
     if (resetTimer) {
       clearTimeout(resetTimer);
       resetTimer = null;
     }
 
     currentBot = new ProjectBot(config, project, botLogger);
-    // Track current bot instance for shutdown
-    const index = bots.findIndex((b) => b === currentBot);
-    if (index < 0) bots.push(currentBot);
+    bots[slotIndex] = currentBot;
 
     const bot = currentBot;
     bot.start().then(() => {
@@ -72,14 +72,7 @@ function startBotWithRecovery(
     retryTimer = setTimeout(launch, delay);
   };
 
-  // Register cleanup for shutdown
-  const origIndex = bots.length;
-  bots.push(null as any); // placeholder
-
   launch();
-
-  // Update the placeholder
-  if (currentBot) bots[origIndex] = currentBot;
 }
 
 async function main(): Promise<void> {

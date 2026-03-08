@@ -27,13 +27,15 @@ export async function downloadImage(ctx: Context, projectPath: string): Promise<
   const filename = `img_${Date.now()}.${ext}`;
   const localPath = join(mediaDir, filename);
 
-  // Download the file
   const url = `https://api.telegram.org/file/bot${ctx.api.token}/${file.file_path}`;
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Telegram file download failed: ${response.status}`);
+  let buffer: Buffer;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Telegram file download failed: ${response.status}`);
+    buffer = Buffer.from(await response.arrayBuffer());
+  } catch (err) {
+    throw new Error(`Telegram file download failed: ${err instanceof Error ? err.message : String(err)}`);
   }
-  const buffer = Buffer.from(await response.arrayBuffer());
   writeFileSync(localPath, buffer);
 
   return localPath;

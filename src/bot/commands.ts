@@ -140,9 +140,10 @@ export function registerCommands(
 }
 
 export function isAuthorized(ctx: Context, config: AppConfig): boolean {
+  if (ctx.chat?.type !== 'private') return false;
   const userId = ctx.from?.id;
   if (!userId || !config.authorizedUsers.includes(userId)) {
-    return false; // Silent drop
+    return false;
   }
   return true;
 }

@@ -210,26 +210,6 @@ export class SessionManager {
     this.project.permissionMode = mode as PermissionMode;
   }
 
-  async undoLastChanges(): Promise<string> {
-    if (!this.currentQuery) {
-      return "No active session to undo.";
-    }
-    try {
-      const result = await this.currentQuery.rewindFiles("last", { dryRun: false });
-      if (!result.canRewind) {
-        return result.error ?? "Nothing to undo.";
-      }
-      const files = result.filesChanged ?? [];
-      const summary = files.length > 0
-        ? `Reverted ${files.length} file(s):\n${files.map((f) => `  - ${f}`).join("\n")}`
-        : "Files reverted.";
-      return `\u21A9\uFE0F ${summary}`;
-    } catch (err) {
-      this.logger.error({ err }, "Undo failed");
-      return `Undo failed: ${String(err)}`;
-    }
-  }
-
   async listSessions(): Promise<string> {
     try {
       const sessions = await listSessions({ dir: this.project.path, limit: 10 });

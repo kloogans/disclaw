@@ -80,7 +80,7 @@ export function chunkMessage(text: string, maxLength = TELEGRAM_MAX_LENGTH - RES
  * and the tags to re-open in the next chunk.
  */
 function balanceHtmlTags(text: string): { closed: string; reopened: string } {
-  const tagStack: string[] = [];
+  const tagStack: { name: string; fullTag: string }[] = [];
   const tagRegex = /<\/?([a-z][a-z0-9]*)[^>]*>/gi;
   let match: RegExpExecArray | null;
 
@@ -88,17 +88,15 @@ function balanceHtmlTags(text: string): { closed: string; reopened: string } {
     const fullMatch = match[0];
     const tagName = match[1].toLowerCase();
 
-    // Skip self-closing and void elements
     if (fullMatch.endsWith("/>") || ["br", "hr", "img", "input"].includes(tagName)) {
       continue;
     }
 
     if (fullMatch.startsWith("</")) {
-      // Closing tag — pop matching open tag
-      const lastIndex = tagStack.lastIndexOf(tagName);
+      const lastIndex = tagStack.findLastIndex((t) => t.name === tagName);
       if (lastIndex >= 0) tagStack.splice(lastIndex, 1);
     } else {
-      tagStack.push(tagName);
+      tagStack.push({ name: tagName, fullTag: fullMatch });
     }
   }
 
@@ -106,10 +104,8 @@ function balanceHtmlTags(text: string): { closed: string; reopened: string } {
     return { closed: text, reopened: "" };
   }
 
-  // Close unclosed tags in reverse order
-  const closingTags = [...tagStack].reverse().map((t) => `</${t}>`).join("");
-  // Re-open them in original order for the next chunk
-  const openingTags = tagStack.map((t) => `<${t}>`).join("");
+  const closingTags = [...tagStack].reverse().map((t) => `</${t.name}>`).join("");
+  const openingTags = tagStack.map((t) => t.fullTag).join("");
 
   return { closed: text + closingTags, reopened: openingTags };
 }

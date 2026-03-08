@@ -25,11 +25,14 @@ export async function downloadDocument(ctx: Context, projectPath: string): Promi
   const localPath = join(mediaDir, filename);
 
   const url = `https://api.telegram.org/file/bot${ctx.api.token}/${file.file_path}`;
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Telegram file download failed: ${response.status}`);
+  let buffer: Buffer;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Telegram file download failed: ${response.status}`);
+    buffer = Buffer.from(await response.arrayBuffer());
+  } catch (err) {
+    throw new Error(`Telegram file download failed: ${err instanceof Error ? err.message : String(err)}`);
   }
-  const buffer = Buffer.from(await response.arrayBuffer());
   writeFileSync(localPath, buffer);
 
   return localPath;

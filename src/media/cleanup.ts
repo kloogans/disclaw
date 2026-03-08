@@ -16,7 +16,7 @@ export function cleanupMedia(projectPath: string): number {
   for (const file of readdirSync(mediaDir)) {
     const filePath = join(mediaDir, file);
     const stat = statSync(filePath);
-    if (now - stat.mtimeMs > TWENTY_FOUR_HOURS) {
+    if (now - stat.mtimeMs > TWENTY_FOUR_HOURS && stat.isFile()) {
       unlinkSync(filePath);
       cleaned++;
     }

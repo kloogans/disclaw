@@ -1,6 +1,7 @@
 import { Bot, InlineKeyboard, InputFile } from "grammy";
 import { autoRetry } from "@grammyjs/auto-retry";
 import { execSync } from "node:child_process";
+import path from "node:path";
 import type { AppConfig, ProjectConfig } from "../config/types.js";
 import { registerCommands, isAuthorized } from "./commands.js";
 import { markdownToTelegramHtml, formatToolUse, escapeHtml } from "./formatting.js";
@@ -190,7 +191,9 @@ export class ProjectBot {
 
   private async processMessage(text: string): Promise<void> {
     if (this.isProcessing) {
-      this.pendingQueue.push(text);
+      if (this.pendingQueue.length < 50) {
+        this.pendingQueue.push(text);
+      }
       return;
     }
 
@@ -202,6 +205,7 @@ export class ProjectBot {
         this.preInteractionGitState = execSync("git status --porcelain", {
           cwd: this.project.path,
           encoding: "utf-8",
+          timeout: 5000,
         }).trim();
       } catch {
         this.preInteractionGitState = null;
@@ -425,6 +429,7 @@ export class ProjectBot {
       const currentState = execSync("git status --porcelain", {
         cwd: this.project.path,
         encoding: "utf-8",
+        timeout: 5000,
       }).trim();
 
       const priorFiles = new Set(
@@ -444,7 +449,6 @@ export class ProjectBot {
   private async handleUndo(): Promise<string> {
     try {
       const { rmSync } = await import("node:fs");
-      const { join } = await import("node:path");
 
       if (this.lastChangedFiles.length === 0) {
         return "Nothing to undo — no files were changed in the last interaction.";
@@ -453,25 +457,30 @@ export class ProjectBot {
       const currentStatus = execSync("git status --porcelain", {
         cwd: this.project.path,
         encoding: "utf-8",
+        timeout: 5000,
       }).trim();
       const statusLines = currentStatus ? currentStatus.split("\n") : [];
 
       const reverted: string[] = [];
 
       for (const file of this.lastChangedFiles) {
+        const resolved = path.resolve(this.project.path, file);
+        if (!resolved.startsWith(this.project.path + path.sep) && resolved !== this.project.path) continue;
+
         const statusLine = statusLines.find((l) => l.slice(3) === file);
-        if (!statusLine) continue; // File no longer in git status — skip
+        if (!statusLine) continue;
 
         try {
           if (statusLine.startsWith("??")) {
             // Untracked file — delete it (handles files and directories)
-            rmSync(join(this.project.path, file), { recursive: true, force: true });
+            rmSync(path.join(this.project.path, file), { recursive: true, force: true });
             reverted.push(file);
           } else {
             // Modified/deleted — restore via git checkout
             execSync(`git checkout -- "${file}"`, {
               cwd: this.project.path,
               encoding: "utf-8",
+              timeout: 5000,
             });
             reverted.push(file);
           }
@@ -498,21 +507,25 @@ export class ProjectBot {
       const unstaged = execSync("git diff --stat", {
         cwd: this.project.path,
         encoding: "utf-8",
+        timeout: 5000,
       }).trim();
 
       const staged = execSync("git diff --cached --stat", {
         cwd: this.project.path,
         encoding: "utf-8",
+        timeout: 5000,
       }).trim();
 
       const untracked = execSync("git ls-files --others --exclude-standard", {
         cwd: this.project.path,
         encoding: "utf-8",
+        timeout: 5000,
       }).trim();
 
       const log = execSync("git log --oneline -5", {
         cwd: this.project.path,
         encoding: "utf-8",
+        timeout: 5000,
       }).trim();
 
       const parts: string[] = [];
@@ -560,9 +573,14 @@ export class ProjectBot {
       if (!file.file_path) throw new Error("Could not get voice file");
 
       const url = `https://api.telegram.org/file/bot${this.bot.token}/${file.file_path}`;
-      const response = await fetch(url);
-      if (!response.ok) throw new Error(`Telegram file download failed: ${response.status}`);
-      const buffer = Buffer.from(await response.arrayBuffer());
+      let buffer: Buffer;
+      try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`Telegram file download failed: ${response.status}`);
+        buffer = Buffer.from(await response.arrayBuffer());
+      } catch (err) {
+        throw new Error(`Telegram file download failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
 
       const text = await transcribeAudio(buffer, this.config.whisper, this.logger);
       await ctx.reply(`\uD83C\uDF99\uFE0F <i>${escapeHtml(text)}</i>`, { parse_mode: "HTML" });
