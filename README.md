@@ -14,6 +14,11 @@ Remote Claude Code control via Telegram. Run Claude as a daemon on your Mac and 
 - **Auto-start** -- install as a macOS LaunchAgent, Linux systemd service, or Windows scheduled task that starts on login and auto-restarts on crash
 - **Multi-turn conversations** -- send multiple messages that get batched intelligently before sending to Claude
 - **Session management** -- list, resume, and manage past sessions per project
+- **Live response streaming** -- see Claude's response as it types, updated every few seconds
+- **Typing indicator** -- Telegram shows "typing..." while Claude is working
+- **Pinned responses** -- Claude's last response is automatically pinned for easy reference
+- **Git status notifications** -- periodic alerts when your project has uncommitted changes
+- **`/undo` and `/diff`** -- revert file changes or view git status from the chat
 
 ---
 
@@ -138,6 +143,8 @@ These commands are available inside each project's Telegram bot chat:
 | `/cancel` | Interrupt the current operation |
 | `/model <name>` | Switch model (`sonnet`, `opus`, `haiku`) |
 | `/mode <mode>` | Switch permission mode (`auto`, `plan`, `default`) |
+| `/undo` | Revert last file changes (uncommitted modifications) |
+| `/diff` | Show uncommitted changes and recent commits |
 | `/sessions` | List past sessions |
 | `/resume <id>` | Resume a previous session |
 | `/status` | Show project info, current model, and session details |

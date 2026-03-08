@@ -1,5 +1,6 @@
 import { Bot, InlineKeyboard, InputFile } from "grammy";
 import { autoRetry } from "@grammyjs/auto-retry";
+import { execSync } from "node:child_process";
 import type { AppConfig, ProjectConfig } from "../config/types.js";
 import { registerCommands, isAuthorized } from "./commands.js";
 import { markdownToTelegramHtml, formatToolUse, escapeHtml } from "./formatting.js";
@@ -25,6 +26,11 @@ export class ProjectBot {
   private isProcessing = false;
   private pendingQueue: string[] = [];
   private totalCostUsd = 0;
+  private typingInterval: ReturnType<typeof setInterval> | null = null;
+  private streamBuffer = "";
+  private streamUpdateInterval: ReturnType<typeof setInterval> | null = null;
+  private gitNotifyInterval: ReturnType<typeof setInterval> | null = null;
+  private lastGitState: string | null = null;
 
   constructor(config: AppConfig, project: ProjectConfig, logger: pino.Logger) {
     this.config = config;
@@ -39,6 +45,7 @@ export class ProjectBot {
 
     this.sessionManager = new SessionManager(project, config, logger, {
       onAssistantMessage: (text: string) => this.handleAssistantMessage(text),
+      onStreamDelta: (text: string) => this.handleStreamDelta(text),
       onToolUse: (toolName: string, input: Record<string, unknown>) => this.handleToolUse(toolName, input),
       onResult: (result: string, costUsd: number) => this.handleResult(result, costUsd),
       onError: (error: string) => this.handleError(error),
@@ -67,6 +74,8 @@ export class ProjectBot {
       onModeChange: (mode) => this.sessionManager.setPermissionMode(mode),
       onSessionsList: () => this.sessionManager.listSessions(),
       onResume: (id) => this.sessionManager.resumeSession(id),
+      onUndo: () => this.handleUndo(),
+      onDiff: () => this.handleDiff(),
       onStatus: () => this.getStatus(),
       onCost: () => this.getCost(),
     });
@@ -115,6 +124,63 @@ export class ProjectBot {
     });
   }
 
+  // --- Typing indicator ---
+
+  private startTypingIndicator(): void {
+    this.stopTypingIndicator();
+    if (!this.statusChatId) return;
+    const chatId = this.statusChatId;
+    // Send immediately, then every 4 seconds (Telegram cancels after 5s)
+    this.bot.api.sendChatAction(chatId, "typing").catch(() => {});
+    this.typingInterval = setInterval(() => {
+      this.bot.api.sendChatAction(chatId, "typing").catch(() => {});
+    }, 4000);
+  }
+
+  private stopTypingIndicator(): void {
+    if (this.typingInterval) {
+      clearInterval(this.typingInterval);
+      this.typingInterval = null;
+    }
+  }
+
+  // --- Progress streaming ---
+
+  private startStreamUpdates(): void {
+    this.streamBuffer = "";
+    this.stopStreamUpdates();
+    // Update the status message every 4 seconds with streamed content
+    this.streamUpdateInterval = setInterval(() => {
+      this.flushStreamBuffer();
+    }, 4000);
+  }
+
+  private stopStreamUpdates(): void {
+    if (this.streamUpdateInterval) {
+      clearInterval(this.streamUpdateInterval);
+      this.streamUpdateInterval = null;
+    }
+  }
+
+  private flushStreamBuffer(): void {
+    if (!this.statusChatId || !this.statusMessageId || !this.streamBuffer) return;
+    // Truncate for Telegram's 4096 char limit, show tail end
+    let preview = this.streamBuffer;
+    if (preview.length > 3800) {
+      preview = "..." + preview.slice(-3700);
+    }
+    const escaped = escapeHtml(preview);
+    this.bot.api.editMessageText(this.statusChatId, this.statusMessageId, `\u270D\uFE0F\n\n${escaped}`, {
+      parse_mode: "HTML",
+    }).catch(() => {});
+  }
+
+  private handleStreamDelta(text: string): void {
+    this.streamBuffer += text;
+  }
+
+  // --- Message processing ---
+
   private async processMessage(text: string): Promise<void> {
     if (this.isProcessing) {
       this.pendingQueue.push(text);
@@ -124,15 +190,20 @@ export class ProjectBot {
     this.isProcessing = true;
 
     try {
-      // Send "Working..." message
+      // Send "Working..." message and start indicators
       if (this.statusChatId) {
         const msg = await this.bot.api.sendMessage(this.statusChatId, "\u23F3 Working...");
         this.statusMessageId = msg.message_id;
       }
 
+      this.startTypingIndicator();
+      this.startStreamUpdates();
+
       await this.sessionManager.sendMessage(text);
     } catch (err) {
       this.logger.error({ err }, "Error processing message");
+      this.stopTypingIndicator();
+      this.stopStreamUpdates();
       if (this.statusChatId) {
         await this.bot.api.sendMessage(this.statusChatId, `\u274C ${escapeHtml(String(err))}`, { parse_mode: "HTML" });
       }
@@ -156,16 +227,18 @@ export class ProjectBot {
           parse_mode: "HTML",
         });
       } catch {
-        // Edit might fail if message hasn't changed — ignore
+        // Edit might fail if message hasn't changed
       }
     }
   }, 3000);
 
   private async handleAssistantMessage(_text: string): Promise<void> {
-    // Accumulate — final response sent in handleResult
+    // Full assistant messages arrive after streaming is done — handled in handleResult
   }
 
   private handleToolUse(toolName: string, input: Record<string, unknown>): void {
+    // When tools are being used, show tool status instead of stream preview
+    this.streamBuffer = "";
     const status = formatToolUse(toolName, input);
     this.updateStatusThrottled(status);
   }
@@ -173,40 +246,54 @@ export class ProjectBot {
   private async handleResult(result: string, costUsd: number): Promise<void> {
     this.totalCostUsd += costUsd;
     this.isProcessing = false;
+    this.stopTypingIndicator();
+    this.stopStreamUpdates();
 
     if (!this.statusChatId) return;
 
-    // Delete the "Working..." message
+    // Delete the streaming/status message
     if (this.statusMessageId) {
       try {
         await this.bot.api.deleteMessage(this.statusChatId, this.statusMessageId);
-      } catch {
-        // Ignore
-      }
+      } catch {}
       this.statusMessageId = null;
     }
 
     // Check for secrets
     const secretWarning = scanForSecrets(result);
 
+    let lastMessageId: number | undefined;
+
     if (result.length > this.config.maxResponseChars) {
-      // Send as document for very long responses — skip formatting work
+      // Send as document for very long responses
       const buffer = Buffer.from(result, "utf-8");
-      await this.bot.api.sendDocument(this.statusChatId, new InputFile(buffer, "response.md"), {
+      const msg = await this.bot.api.sendDocument(this.statusChatId, new InputFile(buffer, "response.md"), {
         caption: `Response too long for chat (${result.length} chars). Sent as file.`,
       });
+      lastMessageId = msg.message_id;
     } else {
       // Format and send response
       const formatted = markdownToTelegramHtml(result);
       const chunks = chunkMessage(formatted);
       for (const chunk of chunks) {
-        await this.bot.api.sendMessage(this.statusChatId, chunk, { parse_mode: "HTML" });
+        const msg = await this.bot.api.sendMessage(this.statusChatId, chunk, { parse_mode: "HTML" });
+        lastMessageId = msg.message_id;
       }
+    }
+
+    // Pin the last response message
+    if (lastMessageId) {
+      try {
+        await this.bot.api.pinChatMessage(this.statusChatId, lastMessageId, { disable_notification: true });
+      } catch {}
     }
 
     if (secretWarning) {
       await this.bot.api.sendMessage(this.statusChatId, secretWarning);
     }
+
+    // Reset stream buffer
+    this.streamBuffer = "";
 
     // Process next queued message (deferred to avoid reentrant async generator iteration)
     setImmediate(() => this.processNextInQueue());
@@ -214,6 +301,9 @@ export class ProjectBot {
 
   private async handleError(error: string): Promise<void> {
     this.isProcessing = false;
+    this.stopTypingIndicator();
+    this.stopStreamUpdates();
+    this.streamBuffer = "";
     if (this.statusChatId) {
       await this.bot.api.sendMessage(this.statusChatId, `\u274C ${escapeHtml(error)}`, {
         parse_mode: "HTML",
@@ -225,6 +315,8 @@ export class ProjectBot {
   private handleSessionId(_sessionId: string): void {
     // State persistence handled by SessionManager
   }
+
+  // --- Permission handling ---
 
   private permissionCallbacks = new Map<
     string,
@@ -302,6 +394,74 @@ export class ProjectBot {
     }
   }
 
+  // --- /undo and /diff ---
+
+  private async handleUndo(): Promise<string> {
+    try {
+      // Use git to revert uncommitted changes as a reliable fallback
+      const status = execSync("git status --porcelain", {
+        cwd: this.project.path,
+        encoding: "utf-8",
+      }).trim();
+
+      if (!status) {
+        return "Nothing to undo — no uncommitted changes.";
+      }
+
+      // Get the list of modified files (not untracked)
+      const modified = status
+        .split("\n")
+        .filter((line) => line.startsWith(" M") || line.startsWith("M "))
+        .map((line) => line.slice(3));
+
+      if (modified.length === 0) {
+        return "No modified files to revert. Only untracked files present.";
+      }
+
+      execSync(`git checkout -- ${modified.map((f) => `"${f}"`).join(" ")}`, {
+        cwd: this.project.path,
+        encoding: "utf-8",
+      });
+
+      return `\u21A9\uFE0F Reverted ${modified.length} file(s):\n${modified.map((f) => `  - <code>${escapeHtml(f)}</code>`).join("\n")}`;
+    } catch (err) {
+      this.logger.error({ err }, "Undo failed");
+      return `Undo failed: ${escapeHtml(String(err))}`;
+    }
+  }
+
+  private async handleDiff(): Promise<string> {
+    try {
+      const stat = execSync("git diff --stat", {
+        cwd: this.project.path,
+        encoding: "utf-8",
+      }).trim();
+
+      const log = execSync("git log --oneline -5", {
+        cwd: this.project.path,
+        encoding: "utf-8",
+      }).trim();
+
+      const parts: string[] = [];
+
+      if (stat) {
+        parts.push(`<b>Uncommitted changes:</b>\n<pre>${escapeHtml(stat)}</pre>`);
+      } else {
+        parts.push("No uncommitted changes.");
+      }
+
+      if (log) {
+        parts.push(`<b>Recent commits:</b>\n<pre>${escapeHtml(log)}</pre>`);
+      }
+
+      return parts.join("\n\n");
+    } catch (err) {
+      return `Error: ${escapeHtml(String(err))}`;
+    }
+  }
+
+  // --- Media handlers ---
+
   private async handleVoice(ctx: import("grammy").Context): Promise<void> {
     const voice = ctx.message?.voice;
     if (!voice) return;
@@ -363,6 +523,53 @@ export class ProjectBot {
     }
   }
 
+  // --- Git status notifications ---
+
+  private startGitNotifications(): void {
+    // Check every 30 minutes
+    this.gitNotifyInterval = setInterval(() => {
+      this.checkGitStatus();
+    }, 30 * 60 * 1000);
+  }
+
+  private checkGitStatus(): void {
+    if (!this.statusChatId) return;
+
+    try {
+      const status = execSync("git status --porcelain", {
+        cwd: this.project.path,
+        encoding: "utf-8",
+        timeout: 5000,
+      }).trim();
+
+      // Only notify if state changed since last check
+      if (status === this.lastGitState) return;
+      this.lastGitState = status;
+
+      if (!status) return; // Clean — don't notify
+
+      const lines = status.split("\n");
+      const modified = lines.filter((l) => l.startsWith(" M") || l.startsWith("M ")).length;
+      const added = lines.filter((l) => l.startsWith("??")).length;
+      const deleted = lines.filter((l) => l.startsWith(" D") || l.startsWith("D ")).length;
+
+      const parts: string[] = [];
+      if (modified > 0) parts.push(`${modified} modified`);
+      if (added > 0) parts.push(`${added} untracked`);
+      if (deleted > 0) parts.push(`${deleted} deleted`);
+
+      this.bot.api.sendMessage(
+        this.statusChatId,
+        `\uD83D\uDCCB <b>${escapeHtml(this.project.name)}</b> has uncommitted changes: ${parts.join(", ")}\n\nUse /diff for details.`,
+        { parse_mode: "HTML" },
+      ).catch(() => {});
+    } catch {
+      // Git not available or timeout — skip silently
+    }
+  }
+
+  // --- Status ---
+
   private getStatus(): string {
     const model = this.project.model ?? this.config.defaults.model;
     const mode = this.project.permissionMode ?? this.config.defaults.permissionMode;
@@ -382,8 +589,11 @@ export class ProjectBot {
     return `\uD83D\uDCB0 Session cost: <b>$${this.totalCostUsd.toFixed(4)}</b>`;
   }
 
+  // --- Lifecycle ---
+
   async start(): Promise<void> {
     this.logger.info({ project: this.project.name }, "Starting bot");
+    this.startGitNotifications();
     await this.bot.start({
       onStart: () => {
         this.logger.info({ project: this.project.name }, "Bot is running");
@@ -394,6 +604,12 @@ export class ProjectBot {
   async stop(): Promise<void> {
     this.logger.info({ project: this.project.name }, "Stopping bot");
     this.batcher.clear();
+    this.stopTypingIndicator();
+    this.stopStreamUpdates();
+    if (this.gitNotifyInterval) {
+      clearInterval(this.gitNotifyInterval);
+      this.gitNotifyInterval = null;
+    }
     for (const [id, pending] of this.permissionCallbacks) {
       clearTimeout(pending.timer);
       pending.respond({ behavior: "deny", message: "Bot is shutting down" });

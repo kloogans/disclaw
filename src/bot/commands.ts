@@ -2,6 +2,20 @@ import type { Context } from "grammy";
 import type { ProjectConfig, AppConfig } from "../config/types.js";
 import { escapeHtml } from "./formatting.js";
 
+const BOT_COMMANDS = [
+  { command: "new", description: "Start a fresh session" },
+  { command: "cancel", description: "Interrupt current operation" },
+  { command: "model", description: "Switch model (sonnet, opus, haiku)" },
+  { command: "mode", description: "Switch permission mode" },
+  { command: "undo", description: "Revert last file changes" },
+  { command: "diff", description: "Show recent git changes" },
+  { command: "sessions", description: "List past sessions" },
+  { command: "resume", description: "Resume a session" },
+  { command: "status", description: "Project and session info" },
+  { command: "cost", description: "Session cost" },
+  { command: "help", description: "Show all commands" },
+];
+
 export function registerCommands(
   bot: import("grammy").Bot,
   project: ProjectConfig,
@@ -13,10 +27,15 @@ export function registerCommands(
     onModeChange: (mode: string) => void;
     onSessionsList: () => Promise<string>;
     onResume: (sessionId: string) => void;
+    onUndo: () => Promise<string>;
+    onDiff: () => Promise<string>;
     onStatus: () => string;
     onCost: () => string;
   },
 ): void {
+  // Register command menu in Telegram
+  bot.api.setMyCommands(BOT_COMMANDS).catch(() => {});
+
   bot.command("start", async (ctx) => {
     if (!isAuthorized(ctx, config)) return;
     await ctx.reply(
@@ -35,6 +54,8 @@ export function registerCommands(
         `/model &lt;name&gt; \u2014 Switch model (sonnet, opus, haiku)\n` +
         `/mode &lt;mode&gt; \u2014 Switch permission mode (auto, plan, default)\n` +
         `/cancel \u2014 Interrupt current operation\n` +
+        `/undo \u2014 Revert last file changes\n` +
+        `/diff \u2014 Show recent git changes\n` +
         `/sessions \u2014 List past sessions\n` +
         `/resume &lt;id&gt; \u2014 Resume a session\n` +
         `/status \u2014 Show project & session info\n` +
@@ -78,6 +99,18 @@ export function registerCommands(
     await ctx.reply(`\uD83D\uDD12 Permission mode: <b>${escapeHtml(mode)}</b>`, { parse_mode: "HTML" });
   });
 
+  bot.command("undo", async (ctx) => {
+    if (!isAuthorized(ctx, config)) return;
+    const result = await callbacks.onUndo();
+    await ctx.reply(result, { parse_mode: "HTML" });
+  });
+
+  bot.command("diff", async (ctx) => {
+    if (!isAuthorized(ctx, config)) return;
+    const result = await callbacks.onDiff();
+    await ctx.reply(result, { parse_mode: "HTML" });
+  });
+
   bot.command("sessions", async (ctx) => {
     if (!isAuthorized(ctx, config)) return;
     const list = await callbacks.onSessionsList();
@@ -109,7 +142,7 @@ export function registerCommands(
 export function isAuthorized(ctx: Context, config: AppConfig): boolean {
   const userId = ctx.from?.id;
   if (!userId || !config.authorizedUsers.includes(userId)) {
-    return false; // Silent drop — don't reveal the bot exists
+    return false; // Silent drop
   }
   return true;
 }

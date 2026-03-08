@@ -9,8 +9,9 @@ export function escapeHtml(text: string): string {
 }
 
 /**
- * Convert basic markdown from Claude's responses to Telegram HTML.
- * Handles: code blocks, inline code, bold, italic.
+ * Convert markdown from Claude's responses to Telegram HTML.
+ * Handles: code blocks, inline code, bold, italic, headings,
+ * blockquotes, links, strikethrough, lists, horizontal rules.
  */
 export function markdownToTelegramHtml(text: string): string {
   let result = text;
@@ -35,6 +36,23 @@ export function markdownToTelegramHtml(text: string): string {
   // Escape HTML in remaining text
   result = escapeHtml(result);
 
+  // Headings (# ... ######) -> bold text
+  result = result.replace(/^#{1,6}\s+(.+)$/gm, "<b>$1</b>");
+
+  // Blockquotes (> text) -> <blockquote>
+  // Collapse consecutive blockquote lines into one block
+  result = result.replace(/(?:^&gt;\s?(.*)$\n?)+/gm, (match) => {
+    const lines = match
+      .split("\n")
+      .filter((l) => l.trim())
+      .map((l) => l.replace(/^&gt;\s?/, ""))
+      .join("\n");
+    return `<blockquote>${lines}</blockquote>\n`;
+  });
+
+  // Links [text](url) -> <a href="url">text</a>
+  result = result.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+
   // Bold (**text** or __text__)
   result = result.replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
   result = result.replace(/__(.+?)__/g, "<b>$1</b>");
@@ -42,6 +60,12 @@ export function markdownToTelegramHtml(text: string): string {
   // Italic (*text* or _text_)
   result = result.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, "<i>$1</i>");
   result = result.replace(/(?<!_)_(?!_)(.+?)(?<!_)_(?!_)/g, "<i>$1</i>");
+
+  // Strikethrough (~~text~~)
+  result = result.replace(/~~(.+?)~~/g, "<s>$1</s>");
+
+  // Horizontal rules (---, ***, ___) -> thin line
+  result = result.replace(/^[-*_]{3,}\s*$/gm, "---");
 
   // Restore code blocks and inline code
   result = result.replace(/\x00CODEBLOCK(\d+)\x00/g, (_match, index) => codeBlocks[parseInt(index)]);

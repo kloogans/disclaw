@@ -7,6 +7,7 @@ import type pino from "pino";
 
 interface SessionCallbacks {
   onAssistantMessage: (text: string) => void;
+  onStreamDelta: (text: string) => void;
   onToolUse: (toolName: string, input: Record<string, unknown>) => void;
   onResult: (result: string, costUsd: number) => void;
   onError: (error: string) => void;
@@ -80,6 +81,8 @@ export class SessionManager {
         settingSources: this.config.defaults.settingSources as ("user" | "project" | "local")[],
         systemPrompt: buildSystemPrompt(),
         abortController: this.abortController,
+        includePartialMessages: true,
+        enableFileCheckpointing: true,
         ...(resume ? { resume } : {}),
         ...(effort ? { effort } : {}),
         ...(thinking ? { thinking: { type: thinking } } : {}),
@@ -127,6 +130,15 @@ export class SessionManager {
           this.logger.info({ sessionId: message.session_id }, "Session initialized");
         }
         break;
+
+      case "stream_event": {
+        // Partial streaming: extract text deltas for live preview
+        const event = (message as any).event;
+        if (event?.type === "content_block_delta" && event.delta?.type === "text_delta" && event.delta.text) {
+          this.callbacks.onStreamDelta(event.delta.text);
+        }
+        break;
+      }
 
       case "assistant": {
         const text = message.message.content
@@ -196,6 +208,26 @@ export class SessionManager {
       this.logger.info({ mode }, "Permission mode changed");
     }
     this.project.permissionMode = mode as PermissionMode;
+  }
+
+  async undoLastChanges(): Promise<string> {
+    if (!this.currentQuery) {
+      return "No active session to undo.";
+    }
+    try {
+      const result = await this.currentQuery.rewindFiles("last", { dryRun: false });
+      if (!result.canRewind) {
+        return result.error ?? "Nothing to undo.";
+      }
+      const files = result.filesChanged ?? [];
+      const summary = files.length > 0
+        ? `Reverted ${files.length} file(s):\n${files.map((f) => `  - ${f}`).join("\n")}`
+        : "Files reverted.";
+      return `\u21A9\uFE0F ${summary}`;
+    } catch (err) {
+      this.logger.error({ err }, "Undo failed");
+      return `Undo failed: ${String(err)}`;
+    }
   }
 
   async listSessions(): Promise<string> {
