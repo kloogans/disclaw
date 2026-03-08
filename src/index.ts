@@ -106,4 +106,22 @@ program
   .description("Health check — verify system dependencies")
   .action(doctorCommand);
 
+program
+  .command("tray")
+  .description("Launch menu bar icon (macOS/Linux/Windows)")
+  .action(async () => {
+    const { spawn } = await import("node:child_process");
+    const { join, dirname } = await import("node:path");
+    const { fileURLToPath } = await import("node:url");
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = dirname(__filename);
+    const trayPath = join(__dirname, "tray.js");
+    const child = spawn(process.execPath, [trayPath], {
+      detached: true,
+      stdio: "ignore",
+    });
+    child.unref();
+    console.log("Menu bar icon launched.");
+  });
+
 program.parse();

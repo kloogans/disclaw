@@ -12,6 +12,10 @@ function getDaemonPath(): string {
   return join(__dirname, "daemon.js");
 }
 
+function getTrayPath(): string {
+  return join(__dirname, "tray.js");
+}
+
 function getNodePath(): string {
   const cmd = platform() === "win32" ? "where node" : "which node";
   return execSync(cmd, { encoding: "utf-8" }).trim().split("\n")[0];
@@ -79,23 +83,81 @@ function installMacOS(): void {
 
   console.log("LaunchAgent installed. claude-control will auto-start on login.");
   console.log(`  Plist: ${plistDest}`);
+
+  // Also install tray LaunchAgent
+  installMacOSTray(launchAgentsDir, nodePath, logDir);
 }
 
-function uninstallMacOS(): void {
-  const plistDest = join(homedir(), "Library", "LaunchAgents", "com.claude-control.daemon.plist");
+function installMacOSTray(launchAgentsDir: string, nodePath: string, logDir: string): void {
+  const plistDest = join(launchAgentsDir, "com.claude-control.tray.plist");
+  const trayPath = getTrayPath();
 
-  if (!existsSync(plistDest)) {
-    console.log("LaunchAgent not installed.");
-    return;
-  }
+  const template = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.claude-control.tray</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>${nodePath}</string>
+    <string>${trayPath}</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <false/>
+  <key>WorkingDirectory</key>
+  <string>${homedir()}</string>
+  <key>StandardOutPath</key>
+  <string>${logDir}/tray.stdout.log</string>
+  <key>StandardErrorPath</key>
+  <string>${logDir}/tray.stderr.log</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>${process.env.PATH ?? "/usr/local/bin:/usr/bin:/bin"}</string>
+    <key>HOME</key>
+    <string>${homedir()}</string>
+  </dict>
+</dict>
+</plist>`;
+
+  writeFileSync(plistDest, template, "utf-8");
 
   const uid = execSync("id -u", { encoding: "utf-8" }).trim();
   try {
-    execSync(`launchctl bootout gui/${uid} "${plistDest}"`);
+    execSync(`launchctl bootout gui/${uid} "${plistDest}" 2>/dev/null`, { stdio: "ignore" });
   } catch {}
+  execSync(`launchctl bootstrap gui/${uid} "${plistDest}"`);
 
-  unlinkSync(plistDest);
-  console.log("LaunchAgent removed. claude-control will no longer auto-start.");
+  console.log("Menu bar icon will auto-start on login.");
+}
+
+function uninstallMacOS(): void {
+  const uid = execSync("id -u", { encoding: "utf-8" }).trim();
+
+  const daemonPlist = join(homedir(), "Library", "LaunchAgents", "com.claude-control.daemon.plist");
+  if (existsSync(daemonPlist)) {
+    try { execSync(`launchctl bootout gui/${uid} "${daemonPlist}"`); } catch {}
+    unlinkSync(daemonPlist);
+    console.log("Daemon LaunchAgent removed.");
+  }
+
+  const trayPlist = join(homedir(), "Library", "LaunchAgents", "com.claude-control.tray.plist");
+  if (existsSync(trayPlist)) {
+    try { execSync(`launchctl bootout gui/${uid} "${trayPlist}"`); } catch {}
+    unlinkSync(trayPlist);
+    console.log("Tray LaunchAgent removed.");
+  }
+
+  if (!existsSync(daemonPlist) && !existsSync(trayPlist)) {
+    console.log("LaunchAgents not installed.");
+    return;
+  }
+
+  console.log("claude-control will no longer auto-start.");
 }
 
 // --- Linux systemd ---
