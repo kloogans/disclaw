@@ -1,5 +1,5 @@
 import { loadConfig } from "./config/store.js";
-import { writePidFile, removePidFile } from "./config/state.js";
+import { writePidFile, removePidFile, isDaemonRunning, readPidFile } from "./config/state.js";
 import { ProjectBot } from "./bot/project-bot.js";
 import { createLogger } from "./utils/logger.js";
 import { freeWhisper } from "./media/transcriber.js";
@@ -11,6 +11,13 @@ delete process.env.CLAUDECODE;
 const logger = createLogger("daemon");
 
 async function main(): Promise<void> {
+  // Prevent duplicate daemons (LaunchAgent + manual start)
+  if (isDaemonRunning()) {
+    const existingPid = readPidFile();
+    logger.info({ existingPid }, "Another daemon is already running, exiting");
+    process.exit(0);
+  }
+
   writePidFile();
   logger.info({ pid: process.pid }, "Daemon starting");
 
