@@ -60,8 +60,9 @@ export async function transcribeAudio(
   const tempDir = join(getConfigDir(), "temp");
   if (!existsSync(tempDir)) mkdirSync(tempDir, { recursive: true });
 
-  const tempOgg = join(tempDir, `voice_${Date.now()}.ogg`);
-  const tempWav = join(tempDir, `voice_${Date.now()}.wav`);
+  const ts = Date.now();
+  const tempOgg = join(tempDir, `voice_${ts}.ogg`);
+  const tempWav = join(tempDir, `voice_${ts}.wav`);
 
   try {
     writeFileSync(tempOgg, audioBuffer);

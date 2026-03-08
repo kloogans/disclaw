@@ -20,11 +20,15 @@ export async function downloadDocument(ctx: Context, projectPath: string): Promi
   const mediaDir = join(projectPath, ".claude-control", "media");
   if (!existsSync(mediaDir)) mkdirSync(mediaDir, { recursive: true });
 
-  const filename = doc.file_name ?? `doc_${Date.now()}`;
+  const baseName = (doc.file_name ?? "file").replace(/[/\\]/g, "_");
+  const filename = `${Date.now()}_${baseName}`;
   const localPath = join(mediaDir, filename);
 
   const url = `https://api.telegram.org/file/bot${ctx.api.token}/${file.file_path}`;
   const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Telegram file download failed: ${response.status}`);
+  }
   const buffer = Buffer.from(await response.arrayBuffer());
   writeFileSync(localPath, buffer);
 

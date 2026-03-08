@@ -30,6 +30,9 @@ export async function downloadImage(ctx: Context, projectPath: string): Promise<
   // Download the file
   const url = `https://api.telegram.org/file/bot${ctx.api.token}/${file.file_path}`;
   const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Telegram file download failed: ${response.status}`);
+  }
   const buffer = Buffer.from(await response.arrayBuffer());
   writeFileSync(localPath, buffer);
 

@@ -2,6 +2,8 @@ import { loadConfig } from "./config/store.js";
 import { writePidFile, removePidFile } from "./config/state.js";
 import { ProjectBot } from "./bot/project-bot.js";
 import { createLogger } from "./utils/logger.js";
+import { freeWhisper } from "./media/transcriber.js";
+import { cleanupMedia } from "./media/cleanup.js";
 
 const logger = createLogger("daemon");
 
@@ -28,12 +30,26 @@ async function main(): Promise<void> {
 
   logger.info({ count: bots.length }, "All bots started");
 
+  // Clean up stale media files
+  for (const project of config.projects) {
+    const cleaned = cleanupMedia(project.path);
+    if (cleaned > 0) logger.info({ project: project.name, cleaned }, "Cleaned up stale media");
+  }
+
+  // Schedule hourly cleanup
+  setInterval(() => {
+    for (const project of config.projects) {
+      cleanupMedia(project.path);
+    }
+  }, 60 * 60 * 1000);
+
   // Graceful shutdown
   const shutdown = async (signal: string) => {
     logger.info({ signal }, "Shutting down");
     for (const bot of bots) {
       await bot.stop().catch(() => {});
     }
+    await freeWhisper();
     removePidFile();
     process.exit(0);
   };
