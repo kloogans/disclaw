@@ -398,32 +398,51 @@ export class ProjectBot {
 
   private async handleUndo(): Promise<string> {
     try {
-      // Use git to revert uncommitted changes as a reliable fallback
+      const { unlinkSync } = await import("node:fs");
+      const { join } = await import("node:path");
+
       const status = execSync("git status --porcelain", {
         cwd: this.project.path,
         encoding: "utf-8",
       }).trim();
 
       if (!status) {
-        return "Nothing to undo — no uncommitted changes.";
+        return "Nothing to undo — working tree is clean.";
       }
 
-      // Get the list of modified files (not untracked)
-      const modified = status
-        .split("\n")
-        .filter((line) => line.startsWith(" M") || line.startsWith("M "))
+      const lines = status.split("\n");
+      const reverted: string[] = [];
+
+      // Revert modified/deleted files
+      const modified = lines
+        .filter((line) => /^[ MADRCU]{1}[MD]/.test(line) || /^[MD]/.test(line))
         .map((line) => line.slice(3));
 
-      if (modified.length === 0) {
-        return "No modified files to revert. Only untracked files present.";
+      if (modified.length > 0) {
+        execSync(`git checkout -- ${modified.map((f) => `"${f}"`).join(" ")}`, {
+          cwd: this.project.path,
+          encoding: "utf-8",
+        });
+        reverted.push(...modified);
       }
 
-      execSync(`git checkout -- ${modified.map((f) => `"${f}"`).join(" ")}`, {
-        cwd: this.project.path,
-        encoding: "utf-8",
-      });
+      // Delete untracked files (newly created by Claude)
+      const untracked = lines
+        .filter((line) => line.startsWith("??"))
+        .map((line) => line.slice(3));
 
-      return `\u21A9\uFE0F Reverted ${modified.length} file(s):\n${modified.map((f) => `  - <code>${escapeHtml(f)}</code>`).join("\n")}`;
+      for (const file of untracked) {
+        try {
+          unlinkSync(join(this.project.path, file));
+          reverted.push(file);
+        } catch {}
+      }
+
+      if (reverted.length === 0) {
+        return "Nothing to undo.";
+      }
+
+      return `\u21A9\uFE0F Reverted ${reverted.length} file(s):\n${reverted.map((f) => `  - <code>${escapeHtml(f)}</code>`).join("\n")}`;
     } catch (err) {
       this.logger.error({ err }, "Undo failed");
       return `Undo failed: ${escapeHtml(String(err))}`;
