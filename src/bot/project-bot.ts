@@ -8,6 +8,9 @@ import { createThrottle } from "../utils/throttle.js";
 import { MessageBatcher } from "../utils/batcher.js";
 import { scanForSecrets } from "../utils/secrets.js";
 import { SessionManager } from "../claude/session-manager.js";
+import { transcribeAudio } from "../media/transcriber.js";
+import { downloadImage } from "../media/images.js";
+import { downloadDocument } from "../media/documents.js";
 import type pino from "pino";
 
 export class ProjectBot {
@@ -296,18 +299,63 @@ export class ProjectBot {
   }
 
   private async handleVoice(ctx: import("grammy").Context): Promise<void> {
-    // Will be implemented in Task 8 (media)
-    await ctx.reply("\uD83C\uDF99\uFE0F Voice transcription coming soon...");
+    const voice = ctx.message?.voice;
+    if (!voice) return;
+
+    const duration = voice.duration;
+    if (duration > 60) {
+      await ctx.reply("\uD83C\uDF99\uFE0F Transcribing long recording, this may take a moment...");
+    } else {
+      await ctx.reply("\uD83C\uDF99\uFE0F Transcribing...");
+    }
+
+    try {
+      const file = await ctx.getFile();
+      if (!file.file_path) throw new Error("Could not get voice file");
+
+      const url = `https://api.telegram.org/file/bot${this.bot.token}/${file.file_path}`;
+      const response = await fetch(url);
+      const buffer = Buffer.from(await response.arrayBuffer());
+
+      const text = await transcribeAudio(buffer, this.config.whisper, this.logger);
+      await ctx.reply(`\uD83C\uDF99\uFE0F <i>${escapeHtml(text)}</i>`, { parse_mode: "HTML" });
+
+      this.batcher.add(`(Transcribed from voice note) ${text}`);
+    } catch (err) {
+      this.logger.error({ err }, "Voice transcription failed");
+      await ctx.reply("\u274C Transcription failed. Please try again or send as text.");
+    }
   }
 
   private async handlePhoto(ctx: import("grammy").Context): Promise<void> {
-    // Will be implemented in Task 8 (media)
-    await ctx.reply("\uD83D\uDDBC\uFE0F Image support coming soon...");
+    try {
+      const localPath = await downloadImage(ctx, this.project.path);
+      const caption = ctx.message?.caption ?? "";
+      const prompt = caption
+        ? `The user sent an image saved at ${localPath}. Caption: "${caption}"`
+        : `The user sent an image saved at ${localPath}. Please analyze it.`;
+
+      this.batcher.add(prompt);
+    } catch (err) {
+      this.logger.error({ err }, "Image download failed");
+      await ctx.reply("\u274C Couldn't download the image. Please try again.");
+    }
   }
 
   private async handleDocument(ctx: import("grammy").Context): Promise<void> {
-    // Will be implemented in Task 8 (media)
-    await ctx.reply("\uD83D\uDCC1 Document support coming soon...");
+    try {
+      const localPath = await downloadDocument(ctx, this.project.path);
+      const fileName = ctx.message?.document?.file_name ?? "file";
+      const caption = ctx.message?.caption ?? "";
+      const prompt = caption
+        ? `The user sent a file "${fileName}" saved at ${localPath}. Caption: "${caption}"`
+        : `The user sent a file "${fileName}" saved at ${localPath}. Please review it.`;
+
+      this.batcher.add(prompt);
+    } catch (err) {
+      this.logger.error({ err }, "Document download failed");
+      await ctx.reply("\u274C Couldn't download the document. Please try again.");
+    }
   }
 
   private getStatus(): string {
