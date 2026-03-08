@@ -1,5 +1,6 @@
 import type { Context } from "grammy";
 import type { ProjectConfig, AppConfig } from "../config/types.js";
+import { escapeHtml } from "./formatting.js";
 
 export function registerCommands(
   bot: import("grammy").Bot,
@@ -19,7 +20,7 @@ export function registerCommands(
   bot.command("start", async (ctx) => {
     if (!isAuthorized(ctx, config)) return;
     await ctx.reply(
-      `\uD83D\uDE80 <b>${project.name}</b> \u2014 Claude Control\n\n` +
+      `\uD83D\uDE80 <b>${escapeHtml(project.name)}</b> \u2014 Claude Control\n\n` +
         `Send me a message and I'll pass it to Claude.\n` +
         `Use /help for available commands.`,
       { parse_mode: "HTML" },
@@ -63,7 +64,7 @@ export function registerCommands(
       return;
     }
     callbacks.onModelChange(model);
-    await ctx.reply(`\uD83E\uDDE0 Model switched to <b>${model}</b>`, { parse_mode: "HTML" });
+    await ctx.reply(`\uD83E\uDDE0 Model switched to <b>${escapeHtml(model)}</b>`, { parse_mode: "HTML" });
   });
 
   bot.command("mode", async (ctx) => {
@@ -74,7 +75,7 @@ export function registerCommands(
       return;
     }
     callbacks.onModeChange(mode);
-    await ctx.reply(`\uD83D\uDD12 Permission mode: <b>${mode}</b>`, { parse_mode: "HTML" });
+    await ctx.reply(`\uD83D\uDD12 Permission mode: <b>${escapeHtml(mode)}</b>`, { parse_mode: "HTML" });
   });
 
   bot.command("sessions", async (ctx) => {

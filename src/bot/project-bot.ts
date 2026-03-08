@@ -30,6 +30,9 @@ export class ProjectBot {
 
     this.bot = new Bot(project.botToken);
     this.bot.api.config.use(autoRetry());
+    this.bot.catch((err) => {
+      this.logger.error({ err: err.error, ctx: err.ctx?.update?.update_id }, "Unhandled bot error");
+    });
 
     this.sessionManager = new SessionManager(project, config, logger, {
       onAssistantMessage: (text: string) => this.handleAssistantMessage(text),
@@ -128,7 +131,7 @@ export class ProjectBot {
     } catch (err) {
       this.logger.error({ err }, "Error processing message");
       if (this.statusChatId) {
-        await this.bot.api.sendMessage(this.statusChatId, `\u274C Error: ${String(err)}`);
+        await this.bot.api.sendMessage(this.statusChatId, `\u274C ${escapeHtml(String(err))}`, { parse_mode: "HTML" });
       }
       this.isProcessing = false;
       this.processNextInQueue();
@@ -183,17 +186,16 @@ export class ProjectBot {
     // Check for secrets
     const secretWarning = scanForSecrets(result);
 
-    // Format and send response
-    const formatted = markdownToTelegramHtml(result);
-    const chunks = chunkMessage(formatted);
-
     if (result.length > this.config.maxResponseChars) {
-      // Send as document for very long responses
+      // Send as document for very long responses — skip formatting work
       const buffer = Buffer.from(result, "utf-8");
       await this.bot.api.sendDocument(this.statusChatId, new InputFile(buffer, "response.md"), {
         caption: `Response too long for chat (${result.length} chars). Sent as file.`,
       });
     } else {
+      // Format and send response
+      const formatted = markdownToTelegramHtml(result);
+      const chunks = chunkMessage(formatted);
       for (const chunk of chunks) {
         await this.bot.api.sendMessage(this.statusChatId, chunk, { parse_mode: "HTML" });
       }
@@ -223,7 +225,7 @@ export class ProjectBot {
 
   private permissionCallbacks = new Map<
     string,
-    { respond: (result: { behavior: string; message?: string }) => void; timer: ReturnType<typeof setTimeout> }
+    { respond: (result: { behavior: string; message?: string; updatedInput?: Record<string, unknown> }) => void; timer: ReturnType<typeof setTimeout> }
   >();
 
   private async handlePermissionRequest(
@@ -311,13 +313,14 @@ export class ProjectBot {
   private getStatus(): string {
     const model = this.project.model ?? this.config.defaults.model;
     const mode = this.project.permissionMode ?? this.config.defaults.permissionMode;
-    const sessionId = this.sessionManager.currentSessionId ?? "none";
+    const sessionId = this.sessionManager.currentSessionId;
+    const sessionDisplay = sessionId ? `<code>${escapeHtml(sessionId.slice(0, 8))}...</code>` : "none";
     return (
       `<b>${escapeHtml(this.project.name)}</b>\n\n` +
       `\uD83D\uDCC2 ${escapeHtml(this.project.path)}\n` +
       `\uD83E\uDDE0 Model: ${escapeHtml(model)}\n` +
       `\uD83D\uDD12 Mode: ${escapeHtml(mode)}\n` +
-      `\uD83D\uDCAC Session: <code>${escapeHtml(sessionId.slice(0, 8))}...</code>\n` +
+      `\uD83D\uDCAC Session: ${sessionDisplay}\n` +
       `\uD83D\uDCB0 Cost: $${this.totalCostUsd.toFixed(4)}`
     );
   }
@@ -337,6 +340,12 @@ export class ProjectBot {
 
   async stop(): Promise<void> {
     this.logger.info({ project: this.project.name }, "Stopping bot");
+    this.batcher.clear();
+    for (const [id, pending] of this.permissionCallbacks) {
+      clearTimeout(pending.timer);
+      pending.respond({ behavior: "deny", message: "Bot is shutting down" });
+      this.permissionCallbacks.delete(id);
+    }
     this.sessionManager.close();
     await this.bot.stop();
   }
