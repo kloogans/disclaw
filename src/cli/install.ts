@@ -17,7 +17,7 @@ export async function installCommand(): Promise<void> {
 
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = dirname(__filename);
-  const daemonPath = join(__dirname, "..", "daemon.js");
+  const daemonPath = join(__dirname, "daemon.js");
   const logDir = join(getConfigDir(), "logs");
 
   if (!existsSync(logDir)) mkdirSync(logDir, { recursive: true });

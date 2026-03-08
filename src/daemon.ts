@@ -5,6 +5,9 @@ import { createLogger } from "./utils/logger.js";
 import { freeWhisper } from "./media/transcriber.js";
 import { cleanupMedia } from "./media/cleanup.js";
 
+// Remove CLAUDECODE env var so the Agent SDK can spawn Claude Code subprocesses
+delete process.env.CLAUDECODE;
+
 const logger = createLogger("daemon");
 
 async function main(): Promise<void> {

@@ -15,11 +15,18 @@ export interface WhisperConfig {
   language: string;
 }
 
+export type Effort = "low" | "medium" | "high" | "max";
+
+export type ThinkingMode = "adaptive" | "enabled" | "disabled";
+
 export interface DefaultsConfig {
   model: string;
   permissionMode: PermissionMode;
   allowedTools: string[];
   settingSources: string[];
+  effort?: Effort;
+  thinking?: ThinkingMode;
+  maxTurns?: number;
 }
 
 export interface AppConfig {

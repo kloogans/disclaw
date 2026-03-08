@@ -45,20 +45,9 @@ export class SessionManager {
   }
 
   async sendMessage(text: string): Promise<void> {
-    if (this.currentQuery && this._currentSessionId) {
-      // Multi-turn: stream new input into existing session
-      const sessionId = this._currentSessionId ?? "";
-      await this.currentQuery.streamInput(
-        (async function* () {
-          yield {
-            type: "user" as const,
-            session_id: sessionId,
-            message: { role: "user" as const, content: [{ type: "text" as const, text }] },
-            parent_tool_use_id: null,
-          };
-        })(),
-      );
-      await this.consumeMessages();
+    if (this._currentSessionId) {
+      // Multi-turn: start a new query that resumes the existing session
+      await this.startSession(text, this._currentSessionId);
     } else {
       // First message: create new session
       await this.startSession(text);
@@ -71,6 +60,9 @@ export class SessionManager {
     const model = this.project.model ?? this.config.defaults.model;
     const permissionMode = (this.project.permissionMode ?? this.config.defaults.permissionMode) as PermissionMode;
     const allowedTools = this.project.allowedTools ?? this.config.defaults.allowedTools;
+    const effort = this.config.defaults.effort;
+    const thinking = this.config.defaults.thinking;
+    const maxTurns = this.config.defaults.maxTurns;
 
     this.abortController = new AbortController();
 
@@ -89,6 +81,12 @@ export class SessionManager {
         systemPrompt: buildSystemPrompt(),
         abortController: this.abortController,
         ...(resume ? { resume } : {}),
+        ...(effort ? { effort } : {}),
+        ...(thinking ? { thinking: { type: thinking } } : {}),
+        ...(maxTurns ? { maxTurns } : {}),
+        stderr: (data: string) => {
+          this.logger.warn({ stderr: data.trim() }, "Claude stderr");
+        },
         canUseTool: async (toolName, input, _options) => {
           // Check session-level allow list first
           if (this.sessionAllowedTools.has(toolName)) {
