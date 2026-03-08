@@ -47,8 +47,13 @@ export async function doctorCommand(): Promise<void> {
   } catch {}
   check("ffmpeg installed", ffmpegOk, ffmpegOk ? "found in PATH" : "required for voice transcription");
 
-  // ANTHROPIC_API_KEY
-  check("ANTHROPIC_API_KEY set", !!process.env.ANTHROPIC_API_KEY);
+  // Claude Code auth — the SDK uses Claude Code's login, not an API key
+  let claudeAuthOk = false;
+  try {
+    execSync("claude auth status", { stdio: "ignore" });
+    claudeAuthOk = true;
+  } catch {}
+  check("Claude Code authenticated", claudeAuthOk, claudeAuthOk ? "logged in" : "run: claude auth login");
 
   // Daemon status
   check("Daemon running", isDaemonRunning());
