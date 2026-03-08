@@ -36,38 +36,87 @@ function pngChunk(type: string, data: Buffer): Buffer {
   return Buffer.concat([length, typeBuffer, data, crc]);
 }
 
-function createCircleIcon(size: number, filled: boolean): Buffer {
-  const center = size / 2;
-  const outerR = size * 0.38;
-  const innerR = filled ? 0 : size * 0.25;
+// Robot face icon — 22x22 pixel art
+// Running: filled eyes (alive), Stopped: hollow eyes (off)
+// Each string is a row: '#' = filled, '.' = transparent
+const ROBOT_RUNNING: string[] = [
+  "..........#...........",  // antenna tip
+  "..........#...........",  // antenna stem
+  ".........###..........",  // antenna base
+  "....##############....",  // head top
+  "...################...",  //
+  "...################...",  //
+  "...##..####..####.#...",  // eyes (filled)
+  "...##..####..####.#...",  // eyes (filled)
+  "...################...",  //
+  "...################...",  //
+  "...######....#####....",  // mouth
+  "...################...",  //
+  "....##############....",  // head bottom
+  "......############....",  // neck
+  "...################...",  // body top
+  "..##################..",  //
+  "..##################..",  //
+  "..##..##########..##..",  // body detail
+  "..##################..",  //
+  "..##################..",  // body bottom
+  "...##..........##.....",  // feet
+  "...###.........###....",  // feet
+];
 
-  const raw = Buffer.alloc(size * (1 + size * 4));
+const ROBOT_STOPPED: string[] = [
+  "..........#...........",  // antenna tip
+  "..........#...........",  // antenna stem
+  ".........###..........",  // antenna base
+  "....##############....",  // head top
+  "...################...",  //
+  "...################...",  //
+  "...##..#..#..#..#.#...",  // eyes (hollow/X)
+  "...##..#..#..#..#.#...",  // eyes (hollow/X)
+  "...################...",  //
+  "...################...",  //
+  "...######....#####....",  // mouth
+  "...################...",  //
+  "....##############....",  // head bottom
+  "......############....",  // neck
+  "...################...",  // body top
+  "..##################..",  //
+  "..##################..",  //
+  "..##..##########..##..",  // body detail
+  "..##################..",  //
+  "..##################..",  // body bottom
+  "...##..........##.....",  // feet
+  "...###.........###....",  // feet
+];
+
+function createIconFromBitmap(bitmap: string[]): Buffer {
+  const size = bitmap.length;
+  const width = bitmap[0].length;
+
+  const raw = Buffer.alloc(size * (1 + width * 4));
   for (let y = 0; y < size; y++) {
-    const rowOffset = y * (1 + size * 4);
+    const row = bitmap[y];
+    const rowOffset = y * (1 + width * 4);
     raw[rowOffset] = 0; // filter: none
-    for (let x = 0; x < size; x++) {
+    for (let x = 0; x < width; x++) {
       const px = rowOffset + 1 + x * 4;
-      const dx = x - center + 0.5;
-      const dy = y - center + 0.5;
-      const dist = dx * dx + dy * dy;
-      const inside = dist <= outerR * outerR && dist >= innerR * innerR;
-      raw[px + 3] = inside ? 255 : 0; // black pixel with alpha
+      raw[px + 3] = row[x] === "#" ? 255 : 0;
     }
   }
 
   const compressed = deflateSync(raw);
 
   const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(size, 0);
+  ihdr.writeUInt32BE(width, 0);
   ihdr.writeUInt32BE(size, 4);
-  ihdr[8] = 8; // bit depth
-  ihdr[9] = 6; // RGBA
-  ihdr[10] = 0; // compression
-  ihdr[11] = 0; // filter
-  ihdr[12] = 0; // interlace
+  ihdr[8] = 8;
+  ihdr[9] = 6;
+  ihdr[10] = 0;
+  ihdr[11] = 0;
+  ihdr[12] = 0;
 
   return Buffer.concat([
-    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), // PNG signature
+    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
     pngChunk("IHDR", ihdr),
     pngChunk("IDAT", compressed),
     pngChunk("IEND", Buffer.alloc(0)),
@@ -81,12 +130,9 @@ function ensureIcons(): { running: string; stopped: string } {
   const runningPath = join(iconDir, "tray-running.png");
   const stoppedPath = join(iconDir, "tray-stopped.png");
 
-  if (!existsSync(runningPath)) {
-    writeFileSync(runningPath, createCircleIcon(22, true));
-  }
-  if (!existsSync(stoppedPath)) {
-    writeFileSync(stoppedPath, createCircleIcon(22, false));
-  }
+  // Always regenerate to pick up design changes
+  writeFileSync(runningPath, createIconFromBitmap(ROBOT_RUNNING));
+  writeFileSync(stoppedPath, createIconFromBitmap(ROBOT_STOPPED));
 
   return { running: runningPath, stopped: stoppedPath };
 }
