@@ -6,6 +6,9 @@ import { addCommand } from "./cli/add.js";
 import { startCommand } from "./cli/start.js";
 import { stopCommand } from "./cli/stop.js";
 import { installCommand, uninstallCommand } from "./cli/install.js";
+import { removeCommand } from "./cli/remove.js";
+import { logsCommand } from "./cli/logs.js";
+import { doctorCommand } from "./cli/doctor.js";
 
 const program = new Command();
 
@@ -89,103 +92,18 @@ program
   .command("remove")
   .description("Remove a registered project")
   .argument("<name>", "Project name to remove")
-  .action(async (name: string) => {
-    const { loadConfig, saveConfig, removeProject } = await import("./config/store.js");
-    const config = loadConfig();
-    const exists = config.projects.some((p) => p.name === name);
-    if (!exists) {
-      console.error(`Project "${name}" not found. Run: claude-control list`);
-      process.exit(1);
-    }
-    saveConfig(removeProject(config, name));
-    console.log(`Project "${name}" removed.`);
-    console.log("Restart the daemon for changes to take effect: claude-control restart");
-  });
+  .action(removeCommand);
 
 program
   .command("logs")
   .description("Tail logs (all or specific project)")
   .argument("[name]", "Project name (optional, defaults to daemon)")
   .option("-n, --lines <count>", "Number of lines to show", "50")
-  .action(async (name: string | undefined, opts: { lines: string }) => {
-    const { join } = await import("node:path");
-    const { existsSync } = await import("node:fs");
-    const { getConfigDir } = await import("./config/store.js");
-
-    const logDir = join(getConfigDir(), "logs");
-    const logName = name ?? "daemon";
-    const logFile = join(logDir, `${logName}.log`);
-
-    if (!existsSync(logFile)) {
-      console.error(`Log file not found: ${logFile}`);
-      const { readdirSync } = await import("node:fs");
-      if (existsSync(logDir)) {
-        const files = readdirSync(logDir).filter((f) => f.endsWith(".log"));
-        if (files.length > 0) {
-          console.log(`Available logs: ${files.map((f) => f.replace(".log", "")).join(", ")}`);
-        }
-      }
-      process.exit(1);
-    }
-
-    // Use tail -f for real-time following
-    const { spawn } = await import("node:child_process");
-    const tail = spawn("tail", ["-n", opts.lines, "-f", logFile], { stdio: "inherit" });
-    tail.on("error", () => console.error("Failed to tail log file"));
-  });
+  .action(logsCommand);
 
 program
   .command("doctor")
   .description("Health check — verify system dependencies")
-  .action(async () => {
-    const { configExists, loadConfig, getConfigDir } = await import("./config/store.js");
-    const { isDaemonRunning } = await import("./config/state.js");
-    const { existsSync } = await import("node:fs");
-    const { join } = await import("node:path");
-    const { execSync } = await import("node:child_process");
-
-    let ok = true;
-    const check = (label: string, pass: boolean, detail?: string) => {
-      const icon = pass ? "\u2705" : "\u274c";
-      console.log(`${icon} ${label}${detail ? ` — ${detail}` : ""}`);
-      if (!pass) ok = false;
-    };
-
-    console.log("\nclaude-control doctor\n");
-
-    // Node.js version
-    const nodeVersion = process.version;
-    const major = parseInt(nodeVersion.slice(1), 10);
-    check("Node.js >= 22", major >= 22, nodeVersion);
-
-    // Config exists
-    check("Config file exists", configExists(), "~/.claude-control/config.json");
-
-    if (configExists()) {
-      const config = loadConfig();
-      check("Authorized users configured", config.authorizedUsers.length > 0, `${config.authorizedUsers.length} user(s)`);
-      check("Projects registered", config.projects.length > 0, `${config.projects.length} project(s)`);
-
-      // Whisper model
-      const modelPath = join(getConfigDir(), "models", `ggml-${config.whisper.model}.bin`);
-      check("Whisper model available", existsSync(modelPath), `ggml-${config.whisper.model}.bin`);
-    }
-
-    // ffmpeg
-    let ffmpegOk = false;
-    try {
-      execSync("ffmpeg -version", { stdio: "ignore" });
-      ffmpegOk = true;
-    } catch {}
-    check("ffmpeg installed", ffmpegOk, ffmpegOk ? "found in PATH" : "required for voice transcription");
-
-    // ANTHROPIC_API_KEY
-    check("ANTHROPIC_API_KEY set", !!process.env.ANTHROPIC_API_KEY);
-
-    // Daemon status
-    check("Daemon running", isDaemonRunning());
-
-    console.log(ok ? "\nAll checks passed." : "\nSome checks failed. Fix the issues above.");
-  });
+  .action(doctorCommand);
 
 program.parse();
