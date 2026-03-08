@@ -26,6 +26,7 @@ export class SessionManager {
   private currentQuery: Query | null = null;
   private _currentSessionId: string | null = null;
   private abortController: AbortController | null = null;
+  private sessionAllowedTools = new Set<string>();
 
   constructor(
     project: ProjectConfig,
@@ -89,6 +90,10 @@ export class SessionManager {
         abortController: this.abortController,
         ...(resume ? { resume } : {}),
         canUseTool: async (toolName, input, _options) => {
+          // Check session-level allow list first
+          if (this.sessionAllowedTools.has(toolName)) {
+            return { behavior: "allow" } as any;
+          }
           return new Promise((resolve) => {
             this.callbacks.onPermissionRequest(toolName, input as Record<string, unknown>, (result) => {
               resolve(result as any);
@@ -163,6 +168,7 @@ export class SessionManager {
   newSession(): void {
     this.close();
     this._currentSessionId = null;
+    this.sessionAllowedTools.clear();
     saveSessionId(this.project.name, "");
     this.logger.info("New session requested");
   }
@@ -210,6 +216,11 @@ export class SessionManager {
     } catch (err) {
       return `Error listing sessions: ${String(err)}`;
     }
+  }
+
+  addSessionAllowedTool(toolName: string): void {
+    this.sessionAllowedTools.add(toolName);
+    this.logger.info({ toolName }, "Tool added to session allow list");
   }
 
   close(): void {

@@ -32,8 +32,22 @@ async function getWhisper(config: WhisperConfig, logger: pino.Logger): Promise<W
       mkdirSync(MODELS_DIR, { recursive: true });
     }
 
-    const modelName = `ggml-${config.model}.bin`;
-    const modelPath = join(MODELS_DIR, modelName);
+    let modelPath = join(MODELS_DIR, `ggml-${config.model}.bin`);
+
+    if (!existsSync(modelPath)) {
+      // Try smart-whisper's built-in manager
+      try {
+        const { manager } = await import("smart-whisper");
+        if (!manager.check(config.model)) {
+          logger.info({ model: config.model }, "Downloading whisper model (first time)...");
+          await manager.download(config.model);
+          logger.info({ model: config.model }, "Whisper model downloaded");
+        }
+        modelPath = manager.resolve(config.model);
+      } catch (err) {
+        throw new Error(`Whisper model not found at ${modelPath} and auto-download failed: ${err}`);
+      }
+    }
 
     logger.info({ model: config.model, path: modelPath }, "Loading whisper model");
     whisperInstance = new Whisper(modelPath, { gpu: config.gpu });

@@ -228,7 +228,11 @@ export class ProjectBot {
 
   private permissionCallbacks = new Map<
     string,
-    { respond: (result: { behavior: string; message?: string; updatedInput?: Record<string, unknown> }) => void; timer: ReturnType<typeof setTimeout> }
+    {
+      respond: (result: { behavior: string; message?: string; updatedInput?: Record<string, unknown> }) => void;
+      timer: ReturnType<typeof setTimeout>;
+      toolName: string;
+    }
   >();
 
   private async handlePermissionRequest(
@@ -261,7 +265,7 @@ export class ProjectBot {
       respond({ behavior: "deny", message: "Permission request timed out (5 min)" });
     }, this.config.permissionTimeoutMs);
 
-    this.permissionCallbacks.set(callbackId, { respond, timer });
+    this.permissionCallbacks.set(callbackId, { respond, timer, toolName });
   }
 
   private async handleCallbackQuery(ctx: import("grammy").Context): Promise<void> {
@@ -288,8 +292,8 @@ export class ProjectBot {
         break;
       case "always":
         pending.respond({ behavior: "allow" });
-        // TODO: Add to session allowedTools
-        await ctx.editMessageText("\u2705 Allowed (always for this session)");
+        this.sessionManager.addSessionAllowedTool(pending.toolName);
+        await ctx.editMessageText(`\u2705 Allowed (always for this session): ${pending.toolName}`);
         break;
       case "deny":
         pending.respond({ behavior: "deny", message: "User denied this action" });
