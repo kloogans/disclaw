@@ -263,11 +263,11 @@ export class SessionManager {
     this.project.permissionMode = mode as PermissionMode;
   }
 
-  async listSessions(): Promise<string> {
+  async listSessions(): Promise<{ text: string; sessions: { sessionId: string; summary: string }[] }> {
     try {
       const sessions = await listSessions({ dir: this.project.path, limit: 10 });
       if (sessions.length === 0) {
-        return "No past sessions found.";
+        return { text: "No past sessions found.", sessions: [] };
       }
       const lines = sessions.map((s, i) => {
         const date = new Date(s.lastModified).toLocaleDateString();
@@ -275,9 +275,12 @@ export class SessionManager {
         const id = s.sessionId.slice(0, 8);
         return `${i + 1}. <code>${id}</code> ${date}\n   ${summary}`;
       });
-      return `<b>Past Sessions:</b>\n\n${lines.join("\n\n")}`;
+      return {
+        text: `<b>Past Sessions:</b>\n\n${lines.join("\n\n")}`,
+        sessions: sessions.map((s) => ({ sessionId: s.sessionId, summary: s.summary })),
+      };
     } catch (err) {
-      return `Error listing sessions: ${String(err)}`;
+      return { text: `Error listing sessions: ${String(err)}`, sessions: [] };
     }
   }
 

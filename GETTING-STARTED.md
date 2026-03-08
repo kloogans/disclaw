@@ -285,6 +285,8 @@ Type these in the chat:
 | `/cost` | See session cost and token breakdown |
 | `/undo` | Revert last file changes |
 | `/diff` | Show uncommitted changes and recent commits |
+| `/sessions` | List past sessions (tap any to resume) |
+| `/handoff` | Get a CLI command to continue in Claude Code |
 
 ### Live feedback while Claude works
 

@@ -13,7 +13,7 @@ Remote Claude Code control via Telegram. Run Claude as a daemon on your Mac and 
 - **Model and effort switching** -- change models (sonnet, opus, haiku) and effort levels mid-conversation
 - **Auto-start** -- install as a macOS LaunchAgent, Linux systemd service, or Windows scheduled task that starts on login and auto-restarts on crash
 - **Multi-turn conversations** -- send multiple messages that get batched intelligently before sending to Claude
-- **Session management** -- list, resume, and manage past sessions per project
+- **Session management** -- list past sessions with tappable resume buttons, or hand off to Claude Code CLI
 - **Live response streaming** -- see Claude's response as it types, updated every few seconds
 - **Thinking preview** -- watch Claude's extended reasoning live (brain icon) before the response streams in
 - **Tool progress heartbeats** -- see elapsed time during long-running tool operations
@@ -153,8 +153,9 @@ These commands are available inside each project's Telegram bot chat:
 | `/mode <mode>` | Switch permission mode (`auto`, `plan`, `default`) |
 | `/undo` | Revert last file changes (uncommitted modifications) |
 | `/diff` | Show uncommitted changes and recent commits |
-| `/sessions` | List past sessions |
-| `/resume <id>` | Resume a previous session |
+| `/sessions` | List past sessions with tappable resume buttons |
+| `/resume <id>` | Resume a previous session by ID |
+| `/handoff` | Get a `claude --resume` command to continue the session in Claude Code |
 | `/status` | Show project info, model, session, token usage, and context window |
 | `/cost` | Show session cost, token breakdown, cache hits, and context usage |
 

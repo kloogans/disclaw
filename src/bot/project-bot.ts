@@ -93,6 +93,7 @@ export class ProjectBot {
       onModeChange: (mode) => this.sessionManager.setPermissionMode(mode),
       onSessionsList: () => this.sessionManager.listSessions(),
       onResume: (id) => this.sessionManager.resumeSession(id),
+      onHandoff: () => this.sessionManager.currentSessionId,
       onUndo: () => this.handleUndo(),
       onDiff: () => this.handleDiff(),
       onStatus: () => this.getStatus(),
@@ -528,6 +529,16 @@ export class ProjectBot {
   private async handleCallbackQuery(ctx: import("grammy").Context): Promise<void> {
     const data = ctx.callbackQuery?.data;
     if (!data) return;
+
+    // Handle session resume taps (format: "resume:<full-session-id>")
+    if (data.startsWith("resume:")) {
+      const sessionId = data.slice("resume:".length);
+      await ctx.answerCallbackQuery();
+      const label = sessionId.slice(0, 8);
+      await ctx.editMessageText(`\u23EA Resuming session <code>${label}</code>...`, { parse_mode: "HTML" });
+      this.sessionManager.resumeSession(sessionId);
+      return;
+    }
 
     const [callbackId, action] = data.split(":");
 
