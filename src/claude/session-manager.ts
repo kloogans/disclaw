@@ -5,6 +5,15 @@ import { saveSessionId, getLastSessionId } from "../config/state.js";
 import { buildSystemPrompt } from "./system-prompt.js";
 import type pino from "pino";
 
+export interface TokenUsage {
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheCreationTokens: number;
+  contextWindow: number;
+  maxOutputTokens: number;
+}
+
 interface SessionCallbacks {
   onAssistantMessage: (text: string) => void;
   onStreamDelta: (text: string) => void;
@@ -16,7 +25,7 @@ interface SessionCallbacks {
   onRateLimit: (status: string, resetsAt: string | null) => void;
   onCompacting: (isCompacting: boolean) => void;
   onPromptSuggestion: (suggestion: string) => void;
-  onResult: (result: string, costUsd: number) => void;
+  onResult: (result: string, costUsd: number, usage: TokenUsage | null) => void;
   onError: (error: string) => void;
   onSessionId: (sessionId: string) => void;
   onPermissionRequest: (
@@ -212,7 +221,8 @@ export class SessionManager {
 
       case "result": {
         if (message.subtype === "success") {
-          this.callbacks.onResult(message.result, message.total_cost_usd);
+          const usage = this.extractUsage(message);
+          this.callbacks.onResult(message.result, message.total_cost_usd, usage);
         } else {
           const errors = (message as { errors?: string[] }).errors;
           const errorMsg = errors && errors.length > 0
@@ -275,6 +285,29 @@ export class SessionManager {
       return `<b>Past Sessions:</b>\n\n${lines.join("\n\n")}`;
     } catch (err) {
       return `Error listing sessions: ${String(err)}`;
+    }
+  }
+
+  private extractUsage(message: any): TokenUsage | null {
+    try {
+      const modelUsage = message.modelUsage;
+      if (!modelUsage) return null;
+
+      // Get the first (usually only) model's usage
+      const models = Object.values(modelUsage) as any[];
+      if (models.length === 0) return null;
+
+      const model = models[0];
+      return {
+        inputTokens: model.inputTokens ?? 0,
+        outputTokens: model.outputTokens ?? 0,
+        cacheReadTokens: model.cacheReadInputTokens ?? 0,
+        cacheCreationTokens: model.cacheCreationInputTokens ?? 0,
+        contextWindow: model.contextWindow ?? 0,
+        maxOutputTokens: model.maxOutputTokens ?? 0,
+      };
+    } catch {
+      return null;
     }
   }
 

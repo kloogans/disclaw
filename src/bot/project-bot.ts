@@ -9,7 +9,7 @@ import { chunkMessage } from "../utils/chunker.js";
 import { createThrottle } from "../utils/throttle.js";
 import { MessageBatcher } from "../utils/batcher.js";
 import { scanForSecrets } from "../utils/secrets.js";
-import { SessionManager } from "../claude/session-manager.js";
+import { SessionManager, type TokenUsage } from "../claude/session-manager.js";
 import { transcribeAudio } from "../media/transcriber.js";
 import { downloadImage } from "../media/images.js";
 import { downloadDocument } from "../media/documents.js";
@@ -38,6 +38,11 @@ export class ProjectBot {
   private thinkingBuffer = "";
   private isShowingThinking = false;
   private lastPromptSuggestion: string | null = null;
+  private totalInputTokens = 0;
+  private totalOutputTokens = 0;
+  private totalCacheReadTokens = 0;
+  private lastContextWindow = 0;
+  private lastUsage: TokenUsage | null = null;
 
   constructor(config: AppConfig, project: ProjectConfig, logger: pino.Logger) {
     this.config = config;
@@ -61,7 +66,7 @@ export class ProjectBot {
       onRateLimit: (status: string, resetsAt: string | null) => this.handleRateLimit(status, resetsAt),
       onCompacting: (isCompacting: boolean) => this.handleCompacting(isCompacting),
       onPromptSuggestion: (suggestion: string) => this.handlePromptSuggestion(suggestion),
-      onResult: (result: string, costUsd: number) => this.handleResult(result, costUsd),
+      onResult: (result: string, costUsd: number, usage: TokenUsage | null) => this.handleResult(result, costUsd, usage),
       onError: (error: string) => this.handleError(error),
       onSessionId: (sessionId: string) => this.handleSessionId(sessionId),
       onPermissionRequest: (
@@ -347,8 +352,15 @@ export class ProjectBot {
     this.lastPromptSuggestion = suggestion;
   }
 
-  private async handleResult(result: string, costUsd: number): Promise<void> {
+  private async handleResult(result: string, costUsd: number, usage: TokenUsage | null): Promise<void> {
     this.totalCostUsd += costUsd;
+    this.lastUsage = usage;
+    if (usage) {
+      this.totalInputTokens += usage.inputTokens;
+      this.totalOutputTokens += usage.outputTokens;
+      this.totalCacheReadTokens += usage.cacheReadTokens;
+      if (usage.contextWindow > 0) this.lastContextWindow = usage.contextWindow;
+    }
     this.isProcessing = false;
     this.stopTypingIndicator();
     this.stopStreamUpdates();
@@ -397,6 +409,31 @@ export class ProjectBot {
 
     if (secretWarning) {
       await this.bot.api.sendMessage(this.statusChatId, secretWarning);
+    }
+
+    // Show per-turn usage footer
+    if (usage) {
+      const totalTokens = usage.inputTokens + usage.outputTokens;
+      const parts: string[] = [
+        `${this.formatTokenCount(usage.inputTokens)} in`,
+        `${this.formatTokenCount(usage.outputTokens)} out`,
+      ];
+      if (usage.cacheReadTokens > 0) {
+        parts.push(`${this.formatTokenCount(usage.cacheReadTokens)} cached`);
+      }
+      let footer = `\uD83D\uDCCA ${parts.join(" \u00B7 ")} \u00B7 $${costUsd.toFixed(4)}`;
+
+      // Context window warning
+      if (this.lastContextWindow > 0) {
+        const usedPct = Math.round((usage.inputTokens / this.lastContextWindow) * 100);
+        if (usedPct >= 80) {
+          footer += `\n\u26A0\uFE0F Context ${usedPct}% full — consider /new`;
+        } else if (usedPct >= 50) {
+          footer += ` \u00B7 ctx ${usedPct}%`;
+        }
+      }
+
+      await this.bot.api.sendMessage(this.statusChatId, footer);
     }
 
     // Show prompt suggestion as a tappable button
@@ -806,18 +843,46 @@ export class ProjectBot {
     const mode = this.project.permissionMode ?? this.config.defaults.permissionMode;
     const sessionId = this.sessionManager.currentSessionId;
     const sessionDisplay = sessionId ? `<code>${escapeHtml(sessionId.slice(0, 8))}...</code>` : "none";
-    return (
+    let status =
       `<b>${escapeHtml(this.project.name)}</b>\n\n` +
       `\uD83D\uDCC2 ${escapeHtml(this.project.path)}\n` +
       `\uD83E\uDDE0 Model: ${escapeHtml(model)}\n` +
       `\uD83D\uDD12 Mode: ${escapeHtml(mode)}\n` +
       `\uD83D\uDCAC Session: ${sessionDisplay}\n` +
-      `\uD83D\uDCB0 Cost: $${this.totalCostUsd.toFixed(4)}`
-    );
+      `\uD83D\uDCB0 Cost: $${this.totalCostUsd.toFixed(4)}`;
+
+    if (this.totalInputTokens > 0 || this.totalOutputTokens > 0) {
+      status += `\n\uD83D\uDCCA Tokens: ${this.formatTokenCount(this.totalInputTokens)} in / ${this.formatTokenCount(this.totalOutputTokens)} out`;
+      if (this.lastContextWindow > 0 && this.lastUsage) {
+        const usedPct = Math.round((this.lastUsage.inputTokens / this.lastContextWindow) * 100);
+        status += `\n\uD83D\uDCCF Context: ${usedPct}% of ${this.formatTokenCount(this.lastContextWindow)}`;
+      }
+    }
+
+    return status;
+  }
+
+  private formatTokenCount(tokens: number): string {
+    if (tokens >= 1_000_000) return `${(tokens / 1_000_000).toFixed(1)}M`;
+    if (tokens >= 1_000) return `${(tokens / 1_000).toFixed(1)}k`;
+    return String(tokens);
   }
 
   private getCost(): string {
-    return `\uD83D\uDCB0 Session cost: <b>$${this.totalCostUsd.toFixed(4)}</b>`;
+    const parts = [`\uD83D\uDCB0 Session cost: <b>$${this.totalCostUsd.toFixed(4)}</b>`];
+    if (this.totalInputTokens > 0 || this.totalOutputTokens > 0) {
+      parts.push(
+        `\uD83D\uDCCA Tokens: ${this.formatTokenCount(this.totalInputTokens)} in / ${this.formatTokenCount(this.totalOutputTokens)} out`,
+      );
+      if (this.totalCacheReadTokens > 0) {
+        parts.push(`\uD83D\uDCBE Cache hits: ${this.formatTokenCount(this.totalCacheReadTokens)}`);
+      }
+      if (this.lastContextWindow > 0 && this.lastUsage) {
+        const usedPct = Math.round((this.lastUsage.inputTokens / this.lastContextWindow) * 100);
+        parts.push(`\uD83D\uDCCF Context: ${usedPct}% of ${this.formatTokenCount(this.lastContextWindow)}`);
+      }
+    }
+    return parts.join("\n");
   }
 
   // --- Lifecycle ---
