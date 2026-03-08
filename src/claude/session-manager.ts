@@ -8,7 +8,14 @@ import type pino from "pino";
 interface SessionCallbacks {
   onAssistantMessage: (text: string) => void;
   onStreamDelta: (text: string) => void;
+  onThinkingDelta: (text: string) => void;
   onToolUse: (toolName: string, input: Record<string, unknown>) => void;
+  onToolProgress: (toolName: string, elapsedSeconds: number) => void;
+  onTaskStarted: (taskId: string, prompt: string) => void;
+  onTaskNotification: (taskId: string, status: string, summary: string) => void;
+  onRateLimit: (status: string, resetsAt: string | null) => void;
+  onCompacting: (isCompacting: boolean) => void;
+  onPromptSuggestion: (suggestion: string) => void;
   onResult: (result: string, costUsd: number) => void;
   onError: (error: string) => void;
   onSessionId: (sessionId: string) => void;
@@ -83,6 +90,7 @@ export class SessionManager {
         abortController: this.abortController,
         includePartialMessages: true,
         enableFileCheckpointing: true,
+        promptSuggestions: true,
         ...(resume ? { resume } : {}),
         ...(effort ? { effort } : {}),
         ...(thinking ? { thinking: { type: thinking } } : {}),
@@ -128,14 +136,57 @@ export class SessionManager {
           saveSessionId(this.project.name, message.session_id);
           this.callbacks.onSessionId(message.session_id);
           this.logger.info({ sessionId: message.session_id }, "Session initialized");
+        } else if (message.subtype === "status") {
+          const status = (message as any).status;
+          this.callbacks.onCompacting(status === "compacting");
         }
         break;
 
       case "stream_event": {
-        // Partial streaming: extract text deltas for live preview
         const event = (message as any).event;
-        if (event?.type === "content_block_delta" && event.delta?.type === "text_delta" && event.delta.text) {
-          this.callbacks.onStreamDelta(event.delta.text);
+        if (event?.type === "content_block_delta") {
+          if (event.delta?.type === "text_delta" && event.delta.text) {
+            this.callbacks.onStreamDelta(event.delta.text);
+          } else if (event.delta?.type === "thinking_delta" && event.delta.thinking) {
+            this.callbacks.onThinkingDelta(event.delta.thinking);
+          }
+        }
+        break;
+      }
+
+      case "tool_progress": {
+        const msg = message as any;
+        this.callbacks.onToolProgress(msg.tool_name ?? "tool", msg.elapsed_time_seconds ?? 0);
+        break;
+      }
+
+      case "task_started": {
+        const msg = message as any;
+        this.callbacks.onTaskStarted(msg.task_id ?? "", msg.prompt ?? "");
+        break;
+      }
+
+      case "task_notification": {
+        const msg = message as any;
+        this.callbacks.onTaskNotification(
+          msg.task_id ?? "",
+          msg.status ?? "completed",
+          msg.summary ?? "",
+        );
+        break;
+      }
+
+      case "rate_limit_event": {
+        const msg = message as any;
+        const info = msg.rate_limit_info ?? {};
+        this.callbacks.onRateLimit(info.status ?? "unknown", info.resetsAt ?? null);
+        break;
+      }
+
+      case "prompt_suggestion": {
+        const msg = message as any;
+        if (msg.suggestion) {
+          this.callbacks.onPromptSuggestion(msg.suggestion);
         }
         break;
       }
@@ -148,7 +199,6 @@ export class SessionManager {
         if (text) {
           this.callbacks.onAssistantMessage(text);
         }
-        // Check for tool_use blocks
         for (const block of message.message.content) {
           if ((block as any).type === "tool_use") {
             this.callbacks.onToolUse(

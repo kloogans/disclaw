@@ -35,6 +35,9 @@ export class ProjectBot {
   private preInteractionGitState: string | null = null;
   private lastChangedFiles: string[] = [];
   private static readonly MAX_STREAM_BUFFER = 100_000;
+  private thinkingBuffer = "";
+  private isShowingThinking = false;
+  private lastPromptSuggestion: string | null = null;
 
   constructor(config: AppConfig, project: ProjectConfig, logger: pino.Logger) {
     this.config = config;
@@ -50,7 +53,14 @@ export class ProjectBot {
     this.sessionManager = new SessionManager(project, config, logger, {
       onAssistantMessage: (text: string) => this.handleAssistantMessage(text),
       onStreamDelta: (text: string) => this.handleStreamDelta(text),
+      onThinkingDelta: (text: string) => this.handleThinkingDelta(text),
       onToolUse: (toolName: string, input: Record<string, unknown>) => this.handleToolUse(toolName, input),
+      onToolProgress: (toolName: string, elapsed: number) => this.handleToolProgress(toolName, elapsed),
+      onTaskStarted: (taskId: string, prompt: string) => this.handleTaskStarted(taskId, prompt),
+      onTaskNotification: (taskId: string, status: string, summary: string) => this.handleTaskNotification(taskId, status, summary),
+      onRateLimit: (status: string, resetsAt: string | null) => this.handleRateLimit(status, resetsAt),
+      onCompacting: (isCompacting: boolean) => this.handleCompacting(isCompacting),
+      onPromptSuggestion: (suggestion: string) => this.handlePromptSuggestion(suggestion),
       onResult: (result: string, costUsd: number) => this.handleResult(result, costUsd),
       onError: (error: string) => this.handleError(error),
       onSessionId: (sessionId: string) => this.handleSessionId(sessionId),
@@ -167,23 +177,43 @@ export class ProjectBot {
   }
 
   private flushStreamBuffer(): void {
-    if (!this.statusChatId || !this.statusMessageId || !this.streamBuffer) return;
-    // Truncate for Telegram's 4096 char limit, show tail end
-    let preview = this.streamBuffer;
+    if (!this.statusChatId || !this.statusMessageId) return;
+
+    let icon: string;
+    let preview: string;
+
+    if (this.isShowingThinking && this.thinkingBuffer) {
+      icon = "\uD83E\uDDE0";
+      preview = this.thinkingBuffer;
+    } else if (this.streamBuffer) {
+      icon = "\u270D\uFE0F";
+      preview = this.streamBuffer;
+    } else {
+      return;
+    }
+
     if (preview.length > 3800) {
       preview = "..." + preview.slice(-3700);
     }
     const escaped = escapeHtml(preview);
-    this.bot.api.editMessageText(this.statusChatId, this.statusMessageId, `\u270D\uFE0F\n\n${escaped}`, {
+    this.bot.api.editMessageText(this.statusChatId, this.statusMessageId, `${icon}\n\n${escaped}`, {
       parse_mode: "HTML",
     }).catch(() => {});
   }
 
   private handleStreamDelta(text: string): void {
+    this.isShowingThinking = false;
     this.streamBuffer += text;
-    // Cap buffer to prevent unbounded memory growth
     if (this.streamBuffer.length > ProjectBot.MAX_STREAM_BUFFER) {
       this.streamBuffer = this.streamBuffer.slice(-ProjectBot.MAX_STREAM_BUFFER);
+    }
+  }
+
+  private handleThinkingDelta(text: string): void {
+    this.isShowingThinking = true;
+    this.thinkingBuffer += text;
+    if (this.thinkingBuffer.length > ProjectBot.MAX_STREAM_BUFFER) {
+      this.thinkingBuffer = this.thinkingBuffer.slice(-ProjectBot.MAX_STREAM_BUFFER);
     }
   }
 
@@ -258,10 +288,63 @@ export class ProjectBot {
   }
 
   private handleToolUse(toolName: string, input: Record<string, unknown>): void {
-    // When tools are being used, show tool status instead of stream preview
     this.streamBuffer = "";
+    this.thinkingBuffer = "";
+    this.isShowingThinking = false;
     const status = formatToolUse(toolName, input);
     this.updateStatusThrottled(status);
+  }
+
+  private handleToolProgress(toolName: string, elapsedSeconds: number): void {
+    const elapsed = Math.round(elapsedSeconds);
+    this.updateStatusThrottled(
+      `\u2699\uFE0F <b>${escapeHtml(toolName)}</b> running... (${elapsed}s)`,
+    );
+  }
+
+  private handleTaskStarted(_taskId: string, prompt: string): void {
+    const summary = prompt.length > 100 ? prompt.slice(0, 100) + "..." : prompt;
+    this.updateStatusThrottled(
+      `\uD83D\uDE80 <b>Subagent spawned</b>\n${escapeHtml(summary)}`,
+    );
+  }
+
+  private handleTaskNotification(_taskId: string, status: string, summary: string): void {
+    if (!this.statusChatId) return;
+    const icon = status === "completed" ? "\u2705" : "\u274C";
+    const text = summary.length > 200 ? summary.slice(0, 200) + "..." : summary;
+    this.updateStatusThrottled(
+      `${icon} <b>Subagent ${escapeHtml(status)}</b>\n${escapeHtml(text)}`,
+    );
+  }
+
+  private handleRateLimit(status: string, resetsAt: string | null): void {
+    if (!this.statusChatId) return;
+    if (status === "rejected") {
+      const resetInfo = resetsAt ? ` Resets at ${new Date(resetsAt).toLocaleTimeString()}.` : "";
+      this.bot.api.sendMessage(
+        this.statusChatId,
+        `\u26A0\uFE0F <b>Rate limited.</b>${resetInfo} Message will be retried.`,
+        { parse_mode: "HTML" },
+      ).catch(() => {});
+    } else if (status === "allowed_warning") {
+      this.bot.api.sendMessage(
+        this.statusChatId,
+        `\u26A0\uFE0F Approaching rate limit. Responses may slow down.`,
+        { parse_mode: "HTML" },
+      ).catch(() => {});
+    }
+  }
+
+  private handleCompacting(isCompacting: boolean): void {
+    if (!this.statusChatId || !this.statusMessageId) return;
+    if (isCompacting) {
+      this.updateStatusThrottled("\uD83D\uDDDC\uFE0F Compacting context...");
+    }
+  }
+
+  private handlePromptSuggestion(suggestion: string): void {
+    this.lastPromptSuggestion = suggestion;
   }
 
   private async handleResult(result: string, costUsd: number): Promise<void> {
@@ -316,8 +399,26 @@ export class ProjectBot {
       await this.bot.api.sendMessage(this.statusChatId, secretWarning);
     }
 
-    // Reset stream buffer
+    // Show prompt suggestion as a tappable button
+    if (this.lastPromptSuggestion) {
+      const suggestion = this.lastPromptSuggestion;
+      this.lastPromptSuggestion = null;
+      const callbackId = `suggest_${Date.now()}`;
+      const label = suggestion.length > 60 ? suggestion.slice(0, 57) + "..." : suggestion;
+      const keyboard = new InlineKeyboard().text(`\uD83D\uDCA1 ${label}`, `${callbackId}:suggest`);
+      this.suggestionCallbacks.set(callbackId, suggestion);
+      await this.bot.api.sendMessage(this.statusChatId, "\uD83D\uDCA1 <b>Suggested next:</b>", {
+        parse_mode: "HTML",
+        reply_markup: keyboard,
+      });
+      // Auto-expire after 5 minutes
+      setTimeout(() => this.suggestionCallbacks.delete(callbackId), 5 * 60 * 1000);
+    }
+
+    // Reset buffers
     this.streamBuffer = "";
+    this.thinkingBuffer = "";
+    this.isShowingThinking = false;
 
     // Process next queued message (deferred to avoid reentrant async generator iteration)
     setImmediate(() => this.processNextInQueue());
@@ -328,6 +429,8 @@ export class ProjectBot {
     this.stopTypingIndicator();
     this.stopStreamUpdates();
     this.streamBuffer = "";
+    this.thinkingBuffer = "";
+    this.isShowingThinking = false;
     if (this.statusChatId) {
       await this.bot.api.sendMessage(this.statusChatId, `\u274C ${escapeHtml(error)}`, {
         parse_mode: "HTML",
@@ -350,6 +453,7 @@ export class ProjectBot {
       toolName: string;
     }
   >();
+  private suggestionCallbacks = new Map<string, string>();
 
   private async handlePermissionRequest(
     toolName: string,
@@ -389,6 +493,22 @@ export class ProjectBot {
     if (!data) return;
 
     const [callbackId, action] = data.split(":");
+
+    // Handle prompt suggestion taps
+    if (action === "suggest") {
+      const suggestion = this.suggestionCallbacks.get(callbackId);
+      await ctx.answerCallbackQuery();
+      if (!suggestion) {
+        await ctx.editMessageText("This suggestion has expired.");
+        return;
+      }
+      this.suggestionCallbacks.delete(callbackId);
+      await ctx.editMessageText(`\uD83D\uDCA1 ${escapeHtml(suggestion)}`, { parse_mode: "HTML" });
+      this.batcher.add(suggestion);
+      return;
+    }
+
+    // Handle permission callbacks
     const pending = this.permissionCallbacks.get(callbackId);
 
     await ctx.answerCallbackQuery();
