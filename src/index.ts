@@ -5,6 +5,7 @@ import { initCommand } from "./cli/init.js";
 import { addCommand } from "./cli/add.js";
 import { startCommand } from "./cli/start.js";
 import { stopCommand } from "./cli/stop.js";
+import { installCommand, uninstallCommand } from "./cli/install.js";
 
 const program = new Command();
 
@@ -73,5 +74,15 @@ program
     await stopCommand();
     await startCommand();
   });
+
+program
+  .command("install")
+  .description("Install macOS LaunchAgent (auto-start on login)")
+  .action(installCommand);
+
+program
+  .command("uninstall")
+  .description("Remove macOS LaunchAgent")
+  .action(uninstallCommand);
 
 program.parse();
