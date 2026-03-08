@@ -24,24 +24,37 @@ function startBotWithRecovery(
   shuttingDown: { value: boolean },
 ): void {
   let retries = 0;
+  let resetTimer: ReturnType<typeof setTimeout> | null = null;
+  let retryTimer: ReturnType<typeof setTimeout> | null = null;
+  let currentBot: ProjectBot | null = null;
 
   const launch = () => {
     if (shuttingDown.value) return;
 
-    const bot = new ProjectBot(config, project, botLogger);
-    // Track current bot instance for shutdown
-    const index = bots.findIndex((b) => (b as any).project?.name === project.name);
-    if (index >= 0) bots[index] = bot;
-    else bots.push(bot);
+    // Clear any pending reset timer from a previous instance
+    if (resetTimer) {
+      clearTimeout(resetTimer);
+      resetTimer = null;
+    }
 
+    currentBot = new ProjectBot(config, project, botLogger);
+    // Track current bot instance for shutdown
+    const index = bots.findIndex((b) => b === currentBot);
+    if (index < 0) bots.push(currentBot);
+
+    const bot = currentBot;
     bot.start().then(() => {
-      // start() resolved — bot stopped cleanly (shouldn't happen normally)
       botLogger.warn("Bot stopped unexpectedly");
-      scheduleRetry();
+      if (bot === currentBot) scheduleRetry();
     }).catch((err) => {
       botLogger.error({ err, retries }, "Bot crashed");
-      scheduleRetry();
+      if (bot === currentBot) scheduleRetry();
     });
+
+    // Reset retries after 60s of stable running
+    resetTimer = setTimeout(() => {
+      retries = 0;
+    }, 60_000);
   };
 
   const scheduleRetry = () => {
@@ -52,28 +65,21 @@ function startBotWithRecovery(
       return;
     }
 
-    // Exponential backoff: 1s, 2s, 4s, 8s, ... capped at 5 min
     const delay = Math.min(BASE_DELAY_MS * Math.pow(2, retries), MAX_DELAY_MS);
     retries++;
     botLogger.info({ retries, delayMs: delay }, "Restarting bot");
 
-    setTimeout(() => {
-      // Reset retry count if bot has been running for a while (recovered successfully)
-      launch();
-    }, delay);
+    retryTimer = setTimeout(launch, delay);
   };
 
-  // Reset retries after 60s of stable running
-  const originalLaunch = launch;
-  const launchWithReset = () => {
-    originalLaunch();
-    setTimeout(() => {
-      // If we get here, the bot has been running for 60s — reset retry counter
-      if (!shuttingDown.value) retries = 0;
-    }, 60_000);
-  };
+  // Register cleanup for shutdown
+  const origIndex = bots.length;
+  bots.push(null as any); // placeholder
 
-  launchWithReset();
+  launch();
+
+  // Update the placeholder
+  if (currentBot) bots[origIndex] = currentBot;
 }
 
 async function main(): Promise<void> {
@@ -120,7 +126,7 @@ async function main(): Promise<void> {
     shuttingDown.value = true;
     logger.info({ signal }, "Shutting down");
     for (const bot of bots) {
-      await bot.stop().catch(() => {});
+      if (bot) await bot.stop().catch(() => {});
     }
     await freeWhisper();
     removePidFile();

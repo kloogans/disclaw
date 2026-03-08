@@ -31,6 +31,9 @@ export class ProjectBot {
   private streamUpdateInterval: ReturnType<typeof setInterval> | null = null;
   private gitNotifyInterval: ReturnType<typeof setInterval> | null = null;
   private lastGitState: string | null = null;
+  private preInteractionGitState: string | null = null;
+  private lastChangedFiles: string[] = [];
+  private static readonly MAX_STREAM_BUFFER = 100_000;
 
   constructor(config: AppConfig, project: ProjectConfig, logger: pino.Logger) {
     this.config = config;
@@ -177,6 +180,10 @@ export class ProjectBot {
 
   private handleStreamDelta(text: string): void {
     this.streamBuffer += text;
+    // Cap buffer to prevent unbounded memory growth
+    if (this.streamBuffer.length > ProjectBot.MAX_STREAM_BUFFER) {
+      this.streamBuffer = this.streamBuffer.slice(-ProjectBot.MAX_STREAM_BUFFER);
+    }
   }
 
   // --- Message processing ---
@@ -190,6 +197,16 @@ export class ProjectBot {
     this.isProcessing = true;
 
     try {
+      // Snapshot git state before Claude makes changes (for /undo tracking)
+      try {
+        this.preInteractionGitState = execSync("git status --porcelain", {
+          cwd: this.project.path,
+          encoding: "utf-8",
+        }).trim();
+      } catch {
+        this.preInteractionGitState = null;
+      }
+
       // Send "Working..." message and start indicators
       if (this.statusChatId) {
         const msg = await this.bot.api.sendMessage(this.statusChatId, "\u23F3 Working...");
@@ -248,6 +265,9 @@ export class ProjectBot {
     this.isProcessing = false;
     this.stopTypingIndicator();
     this.stopStreamUpdates();
+
+    // Track files Claude changed by diffing git state
+    this.trackChangedFiles();
 
     if (!this.statusChatId) return;
 
@@ -396,52 +416,75 @@ export class ProjectBot {
 
   // --- /undo and /diff ---
 
-  private async handleUndo(): Promise<string> {
+  private trackChangedFiles(): void {
+    if (this.preInteractionGitState === null) {
+      this.lastChangedFiles = [];
+      return;
+    }
     try {
-      const { unlinkSync } = await import("node:fs");
-      const { join } = await import("node:path");
-
-      const status = execSync("git status --porcelain", {
+      const currentState = execSync("git status --porcelain", {
         cwd: this.project.path,
         encoding: "utf-8",
       }).trim();
 
-      if (!status) {
-        return "Nothing to undo — working tree is clean.";
+      const priorFiles = new Set(
+        this.preInteractionGitState ? this.preInteractionGitState.split("\n").filter(Boolean) : [],
+      );
+      const currentFiles = currentState ? currentState.split("\n").filter(Boolean) : [];
+
+      // Files that are new or changed since pre-interaction snapshot
+      this.lastChangedFiles = currentFiles
+        .filter((line) => !priorFiles.has(line))
+        .map((line) => line.slice(3));
+    } catch {
+      this.lastChangedFiles = [];
+    }
+  }
+
+  private async handleUndo(): Promise<string> {
+    try {
+      const { rmSync } = await import("node:fs");
+      const { join } = await import("node:path");
+
+      if (this.lastChangedFiles.length === 0) {
+        return "Nothing to undo — no files were changed in the last interaction.";
       }
 
-      const lines = status.split("\n");
+      const currentStatus = execSync("git status --porcelain", {
+        cwd: this.project.path,
+        encoding: "utf-8",
+      }).trim();
+      const statusLines = currentStatus ? currentStatus.split("\n") : [];
+
       const reverted: string[] = [];
 
-      // Revert modified/deleted files
-      const modified = lines
-        .filter((line) => /^[ MADRCU]{1}[MD]/.test(line) || /^[MD]/.test(line))
-        .map((line) => line.slice(3));
+      for (const file of this.lastChangedFiles) {
+        const statusLine = statusLines.find((l) => l.slice(3) === file);
+        if (!statusLine) continue; // File no longer in git status — skip
 
-      if (modified.length > 0) {
-        execSync(`git checkout -- ${modified.map((f) => `"${f}"`).join(" ")}`, {
-          cwd: this.project.path,
-          encoding: "utf-8",
-        });
-        reverted.push(...modified);
-      }
-
-      // Delete untracked files (newly created by Claude)
-      const untracked = lines
-        .filter((line) => line.startsWith("??"))
-        .map((line) => line.slice(3));
-
-      for (const file of untracked) {
         try {
-          unlinkSync(join(this.project.path, file));
-          reverted.push(file);
-        } catch {}
+          if (statusLine.startsWith("??")) {
+            // Untracked file — delete it (handles files and directories)
+            rmSync(join(this.project.path, file), { recursive: true, force: true });
+            reverted.push(file);
+          } else {
+            // Modified/deleted — restore via git checkout
+            execSync(`git checkout -- "${file}"`, {
+              cwd: this.project.path,
+              encoding: "utf-8",
+            });
+            reverted.push(file);
+          }
+        } catch (err) {
+          this.logger.warn({ err, file }, "Failed to undo file");
+        }
       }
 
       if (reverted.length === 0) {
-        return "Nothing to undo.";
+        return "Nothing to undo — changed files may have already been committed or reverted.";
       }
 
+      this.lastChangedFiles = [];
       return `\u21A9\uFE0F Reverted ${reverted.length} file(s):\n${reverted.map((f) => `  - <code>${escapeHtml(f)}</code>`).join("\n")}`;
     } catch (err) {
       this.logger.error({ err }, "Undo failed");
@@ -451,7 +494,18 @@ export class ProjectBot {
 
   private async handleDiff(): Promise<string> {
     try {
-      const stat = execSync("git diff --stat", {
+      // Show both staged and unstaged changes
+      const unstaged = execSync("git diff --stat", {
+        cwd: this.project.path,
+        encoding: "utf-8",
+      }).trim();
+
+      const staged = execSync("git diff --cached --stat", {
+        cwd: this.project.path,
+        encoding: "utf-8",
+      }).trim();
+
+      const untracked = execSync("git ls-files --others --exclude-standard", {
         cwd: this.project.path,
         encoding: "utf-8",
       }).trim();
@@ -463,10 +517,19 @@ export class ProjectBot {
 
       const parts: string[] = [];
 
-      if (stat) {
-        parts.push(`<b>Uncommitted changes:</b>\n<pre>${escapeHtml(stat)}</pre>`);
-      } else {
-        parts.push("No uncommitted changes.");
+      if (staged) {
+        parts.push(`<b>Staged:</b>\n<pre>${escapeHtml(staged)}</pre>`);
+      }
+      if (unstaged) {
+        parts.push(`<b>Unstaged:</b>\n<pre>${escapeHtml(unstaged)}</pre>`);
+      }
+      if (untracked) {
+        const files = untracked.split("\n").slice(0, 10);
+        const suffix = untracked.split("\n").length > 10 ? `\n  ... and ${untracked.split("\n").length - 10} more` : "";
+        parts.push(`<b>Untracked:</b>\n<pre>${escapeHtml(files.join("\n") + suffix)}</pre>`);
+      }
+      if (!staged && !unstaged && !untracked) {
+        parts.push("Working tree is clean.");
       }
 
       if (log) {
@@ -545,6 +608,17 @@ export class ProjectBot {
   // --- Git status notifications ---
 
   private startGitNotifications(): void {
+    // Initialize last known state so we don't fire a notification on first check
+    try {
+      this.lastGitState = execSync("git status --porcelain", {
+        cwd: this.project.path,
+        encoding: "utf-8",
+        timeout: 5000,
+      }).trim();
+    } catch {
+      this.lastGitState = "";
+    }
+
     // Check every 30 minutes
     this.gitNotifyInterval = setInterval(() => {
       this.checkGitStatus();
