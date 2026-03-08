@@ -323,7 +323,7 @@ export class ProjectBot {
     );
   }
 
-  private handleRateLimit(status: string, resetsAt: string | null): void {
+  private handleRateLimit(status: string, resetsAt: number | null): void {
     if (!this.statusChatId) return;
     if (status === "rejected") {
       const resetInfo = resetsAt ? ` Resets at ${new Date(resetsAt).toLocaleTimeString()}.` : "";
@@ -440,7 +440,7 @@ export class ProjectBot {
     if (this.lastPromptSuggestion) {
       const suggestion = this.lastPromptSuggestion;
       this.lastPromptSuggestion = null;
-      const callbackId = `suggest_${Date.now()}`;
+      const callbackId = `suggest_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
       const label = suggestion.length > 60 ? suggestion.slice(0, 57) + "..." : suggestion;
       const keyboard = new InlineKeyboard().text(`\uD83D\uDCA1 ${label}`, `${callbackId}:suggest`);
       this.suggestionCallbacks.set(callbackId, suggestion);

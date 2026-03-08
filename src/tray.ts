@@ -36,57 +36,57 @@ function pngChunk(type: string, data: Buffer): Buffer {
   return Buffer.concat([length, typeBuffer, data, crc]);
 }
 
-// Robot face icon — 22x22 pixel art
-// Running: filled eyes (alive), Stopped: hollow eyes (off)
-// Each string is a row: '#' = filled, '.' = transparent
+// Robot HEAD only — 22x22 pixel art, fills the space
+// Running: filled square eyes (alive), Stopped: X eyes (off)
+// '#' = filled pixel, '.' = transparent
 const ROBOT_RUNNING: string[] = [
-  "..........#...........",  // antenna tip
-  "..........#...........",  // antenna stem
-  ".........###..........",  // antenna base
-  "....##############....",  // head top
-  "...################...",  //
-  "...################...",  //
-  "...##..####..####.#...",  // eyes (filled)
-  "...##..####..####.#...",  // eyes (filled)
-  "...################...",  //
-  "...################...",  //
-  "...######....#####....",  // mouth
-  "...################...",  //
-  "....##############....",  // head bottom
-  "......############....",  // neck
-  "...################...",  // body top
+  ".........##...........",  // antenna tip
+  ".........##...........",  // antenna
+  "........####..........",  // antenna base
+  "...################...",  // head top (rounded)
   "..##################..",  //
+  ".####################.",  //
+  ".####################.",  //
+  ".####..######..#####..",  // eyes row 1 (filled squares)
+  ".####..######..#####..",  // eyes row 2
+  ".####..######..#####..",  // eyes row 3
+  ".####################.",  //
+  ".####################.",  //
+  ".####################.",  //
+  ".#####..........####..",  // mouth row 1
+  ".######........#####..",  // mouth row 2
+  ".####################.",  //
+  ".####################.",  //
   "..##################..",  //
-  "..##..##########..##..",  // body detail
-  "..##################..",  //
-  "..##################..",  // body bottom
-  "...##..........##.....",  // feet
-  "...###.........###....",  // feet
+  "...################...",  // head bottom (rounded)
+  "......##########......",  // jaw
+  "......................",  //
+  "......................",  //
 ];
 
 const ROBOT_STOPPED: string[] = [
-  "..........#...........",  // antenna tip
-  "..........#...........",  // antenna stem
-  ".........###..........",  // antenna base
-  "....##############....",  // head top
-  "...################...",  //
-  "...################...",  //
-  "...##..#..#..#..#.#...",  // eyes (hollow/X)
-  "...##..#..#..#..#.#...",  // eyes (hollow/X)
-  "...################...",  //
-  "...################...",  //
-  "...######....#####....",  // mouth
-  "...################...",  //
-  "....##############....",  // head bottom
-  "......############....",  // neck
-  "...################...",  // body top
+  ".........##...........",  // antenna tip
+  ".........##...........",  // antenna
+  "........####..........",  // antenna base
+  "...################...",  // head top (rounded)
   "..##################..",  //
+  ".####################.",  //
+  ".####################.",  //
+  ".###.#..####.#..####..",  // X eyes row 1
+  ".####..######..#####..",  // X eyes row 2
+  ".###.#..####.#..####..",  // X eyes row 3
+  ".####################.",  //
+  ".####################.",  //
+  ".####################.",  //
+  ".########....########.",  // flat mouth (neutral)
+  ".########....########.",  //
+  ".####################.",  //
+  ".####################.",  //
   "..##################..",  //
-  "..##..##########..##..",  // body detail
-  "..##################..",  //
-  "..##################..",  // body bottom
-  "...##..........##.....",  // feet
-  "...###.........###....",  // feet
+  "...################...",  // head bottom (rounded)
+  "......##########......",  // jaw
+  "......................",  //
+  "......................",  //
 ];
 
 function createIconFromBitmap(bitmap: string[]): Buffer {
@@ -100,7 +100,12 @@ function createIconFromBitmap(bitmap: string[]): Buffer {
     raw[rowOffset] = 0; // filter: none
     for (let x = 0; x < width; x++) {
       const px = rowOffset + 1 + x * 4;
-      raw[px + 3] = row[x] === "#" ? 255 : 0;
+      if (row[x] === "#") {
+        raw[px] = 255;     // R (white for non-template platforms)
+        raw[px + 1] = 255; // G
+        raw[px + 2] = 255; // B
+        raw[px + 3] = 255; // A
+      }
     }
   }
 
@@ -169,14 +174,14 @@ function runCommand(cmd: string): string {
 
 function openInTerminal(cmd: string): void {
   const cliPath = join(__dirname, "index.js");
+  const command = `node '${cliPath}' ${cmd}`;
   if (platform() === "darwin") {
-    spawn("open", ["-a", "Terminal", `node "${cliPath}" ${cmd}`], { detached: true, stdio: "ignore" });
+    spawn("osascript", ["-e", `tell application "Terminal" to do script "${command}"`], { detached: true, stdio: "ignore" });
   } else if (platform() === "win32") {
-    spawn("cmd", ["/c", "start", "cmd", "/k", `node "${cliPath}" ${cmd}`], { detached: true, stdio: "ignore" });
+    spawn("cmd", ["/c", "start", "cmd", "/k", command], { detached: true, stdio: "ignore" });
   } else {
-    // Linux — try common terminals
     const term = process.env.TERMINAL || "x-terminal-emulator";
-    spawn(term, ["-e", `node "${cliPath}" ${cmd}`], { detached: true, stdio: "ignore" });
+    spawn(term, ["-e", command], { detached: true, stdio: "ignore" });
   }
 }
 
@@ -256,7 +261,7 @@ export function launchTray(): void {
 
   const systray = new SysTray({
     menu: {
-      icon: isWindows ? icons.running : currentIcon,
+      icon: currentIcon,
       isTemplateIcon: isMac,
       title: "",
       tooltip: "claude-control",
@@ -369,5 +374,7 @@ export function launchTray(): void {
   });
 }
 
-// Direct execution
-launchTray();
+// Only launch when executed directly (not imported)
+if (process.argv[1]?.endsWith("tray.js")) {
+  launchTray();
+}

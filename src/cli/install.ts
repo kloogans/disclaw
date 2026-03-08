@@ -137,12 +137,14 @@ function installMacOSTray(launchAgentsDir: string, nodePath: string, logDir: str
 
 function uninstallMacOS(): void {
   const uid = execSync("id -u", { encoding: "utf-8" }).trim();
+  let removed = false;
 
   const daemonPlist = join(homedir(), "Library", "LaunchAgents", "com.claude-control.daemon.plist");
   if (existsSync(daemonPlist)) {
     try { execSync(`launchctl bootout gui/${uid} "${daemonPlist}"`); } catch {}
     unlinkSync(daemonPlist);
     console.log("Daemon LaunchAgent removed.");
+    removed = true;
   }
 
   const trayPlist = join(homedir(), "Library", "LaunchAgents", "com.claude-control.tray.plist");
@@ -150,9 +152,10 @@ function uninstallMacOS(): void {
     try { execSync(`launchctl bootout gui/${uid} "${trayPlist}"`); } catch {}
     unlinkSync(trayPlist);
     console.log("Tray LaunchAgent removed.");
+    removed = true;
   }
 
-  if (!existsSync(daemonPlist) && !existsSync(trayPlist)) {
+  if (!removed) {
     console.log("LaunchAgents not installed.");
     return;
   }
