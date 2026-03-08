@@ -11,7 +11,7 @@ Remote Claude Code control via Telegram. Run Claude as a daemon on your Mac and 
 - **Images and documents** -- send screenshots, photos, or files for Claude to analyze
 - **Permission approval via inline keyboards** -- approve, always-approve, or deny tool usage with tap-friendly buttons
 - **Model and effort switching** -- change models (sonnet, opus, haiku) and effort levels mid-conversation
-- **Auto-start via LaunchAgent** -- install as a macOS LaunchAgent that starts on login and auto-restarts on crash
+- **Auto-start** -- install as a macOS LaunchAgent, Linux systemd service, or Windows scheduled task that starts on login and auto-restarts on crash
 - **Multi-turn conversations** -- send multiple messages that get batched intelligently before sending to Claude
 - **Session management** -- list, resume, and manage past sessions per project
 
@@ -121,8 +121,8 @@ Any project entry can override `model`, `permissionMode`, and `allowedTools`:
 | `claude-control remove <name>` | Unregister a project |
 | `claude-control logs [name]` | Tail logs (daemon by default, or a specific project) |
 | `claude-control doctor` | Health check -- verify Node.js, config, ffmpeg, whisper, auth, daemon |
-| `claude-control install` | Install macOS LaunchAgent for auto-start on login |
-| `claude-control uninstall` | Remove the macOS LaunchAgent |
+| `claude-control install` | Install auto-start (LaunchAgent / systemd / Task Scheduler) |
+| `claude-control uninstall` | Remove auto-start |
 
 ---
 
@@ -147,7 +147,7 @@ These commands are available inside each project's Telegram bot chat:
 
 ## Requirements
 
-- **macOS** -- uses LaunchAgent for auto-start; daemon tested on macOS only
+- **macOS, Linux, or Windows** -- auto-start via LaunchAgent (macOS), systemd (Linux), or Task Scheduler (Windows)
 - **Node.js 22+** -- required for the runtime
 - **Claude Code** with a Max subscription -- the Agent SDK authenticates via your existing Claude Code login (no API key needed)
 - **ffmpeg** -- required for voice note transcription (`brew install ffmpeg`)
