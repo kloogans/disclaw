@@ -46,11 +46,12 @@ export class SessionManager {
   async sendMessage(text: string): Promise<void> {
     if (this.currentQuery) {
       // Multi-turn: stream new input into existing session
+      const sessionId = this._currentSessionId ?? "";
       await this.currentQuery.streamInput(
         (async function* () {
           yield {
             type: "user" as const,
-            session_id: "",
+            session_id: sessionId,
             message: { role: "user" as const, content: [{ type: "text" as const, text }] },
             parent_tool_use_id: null,
           };
@@ -73,7 +74,8 @@ export class SessionManager {
     this.abortController = new AbortController();
 
     // Check for last session to resume on first start
-    const resume = resumeId ?? getLastSessionId(this.project.name);
+    const resumeValue = resumeId || getLastSessionId(this.project.name);
+    const resume = resumeValue && resumeValue.length > 0 ? resumeValue : undefined;
 
     this.currentQuery = query({
       prompt,
@@ -106,6 +108,7 @@ export class SessionManager {
       for await (const message of this.currentQuery) {
         this.handleMessage(message);
       }
+      this.currentQuery = null;
     } catch (err) {
       this.logger.error({ err }, "Error consuming messages");
       this.callbacks.onError(String(err));
@@ -147,7 +150,10 @@ export class SessionManager {
         if (message.subtype === "success") {
           this.callbacks.onResult(message.result, message.total_cost_usd);
         } else {
-          const errorMsg = message.errors.join(", ") || `Session ended: ${message.subtype}`;
+          const errors = (message as { errors?: string[] }).errors;
+          const errorMsg = errors && errors.length > 0
+            ? errors.join(", ")
+            : `Session ended: ${message.subtype}`;
           this.callbacks.onError(errorMsg);
         }
         break;
@@ -158,6 +164,7 @@ export class SessionManager {
   newSession(): void {
     this.close();
     this._currentSessionId = null;
+    saveSessionId(this.project.name, "");
     this.logger.info("New session requested");
   }
 

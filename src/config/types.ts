@@ -7,7 +7,7 @@ export interface ProjectConfig {
   allowedTools?: string[];
 }
 
-export type PermissionMode = "default" | "acceptEdits" | "bypassPermissions" | "plan" | "auto";
+export type PermissionMode = "default" | "acceptEdits" | "bypassPermissions" | "plan" | "auto" | "dontAsk";
 
 export interface WhisperConfig {
   model: string;
