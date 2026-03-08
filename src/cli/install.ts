@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, existsSync, unlinkSync, mkdirSync } from "node:fs";
+import { writeFileSync, existsSync, unlinkSync, mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { homedir } from "node:os";
 import { execSync } from "node:child_process";
@@ -17,7 +17,6 @@ export async function installCommand(): Promise<void> {
 
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = dirname(__filename);
-  const templatePath = join(__dirname, "..", "templates", PLIST_NAME);
   const daemonPath = join(__dirname, "..", "daemon.js");
   const logDir = join(getConfigDir(), "logs");
 
@@ -26,12 +25,37 @@ export async function installCommand(): Promise<void> {
   // Find node path
   const nodePath = execSync("which node", { encoding: "utf-8" }).trim();
 
-  let template = readFileSync(templatePath, "utf-8");
-  template = template.replace(/\{\{NODE_PATH\}\}/g, nodePath);
-  template = template.replace(/\{\{DAEMON_PATH\}\}/g, daemonPath);
-  template = template.replace(/\{\{HOME\}\}/g, homedir());
-  template = template.replace(/\{\{LOG_DIR\}\}/g, logDir);
-  template = template.replace(/\{\{PATH\}\}/g, process.env.PATH ?? "/usr/local/bin:/usr/bin:/bin");
+  const template = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.claude-control.daemon</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>${nodePath}</string>
+    <string>${daemonPath}</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>WorkingDirectory</key>
+  <string>${homedir()}</string>
+  <key>StandardOutPath</key>
+  <string>${logDir}/daemon.stdout.log</string>
+  <key>StandardErrorPath</key>
+  <string>${logDir}/daemon.stderr.log</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>${process.env.PATH ?? "/usr/local/bin:/usr/bin:/bin"}</string>
+    <key>HOME</key>
+    <string>${homedir()}</string>
+  </dict>
+</dict>
+</plist>`;
 
   writeFileSync(plistDest, template, "utf-8");
 

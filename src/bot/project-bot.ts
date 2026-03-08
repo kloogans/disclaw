@@ -208,8 +208,8 @@ export class ProjectBot {
       await this.bot.api.sendMessage(this.statusChatId, secretWarning);
     }
 
-    // Process next queued message
-    this.processNextInQueue();
+    // Process next queued message (deferred to avoid reentrant async generator iteration)
+    setImmediate(() => this.processNextInQueue());
   }
 
   private async handleError(error: string): Promise<void> {
@@ -219,7 +219,7 @@ export class ProjectBot {
         parse_mode: "HTML",
       });
     }
-    this.processNextInQueue();
+    setImmediate(() => this.processNextInQueue());
   }
 
   private handleSessionId(_sessionId: string): void {

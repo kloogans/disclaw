@@ -44,7 +44,7 @@ export class SessionManager {
   }
 
   async sendMessage(text: string): Promise<void> {
-    if (this.currentQuery) {
+    if (this.currentQuery && this._currentSessionId) {
       // Multi-turn: stream new input into existing session
       const sessionId = this._currentSessionId ?? "";
       await this.currentQuery.streamInput(
@@ -108,7 +108,6 @@ export class SessionManager {
       for await (const message of this.currentQuery) {
         this.handleMessage(message);
       }
-      this.currentQuery = null;
     } catch (err) {
       this.logger.error({ err }, "Error consuming messages");
       this.callbacks.onError(String(err));

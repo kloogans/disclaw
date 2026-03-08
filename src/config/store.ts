@@ -23,7 +23,12 @@ export function loadConfig(): AppConfig {
   }
   const raw = readFileSync(CONFIG_PATH, "utf-8");
   const parsed = JSON.parse(raw) as Partial<AppConfig>;
-  return { ...DEFAULT_CONFIG, ...parsed };
+  return {
+    ...DEFAULT_CONFIG,
+    ...parsed,
+    whisper: { ...DEFAULT_CONFIG.whisper, ...parsed.whisper },
+    defaults: { ...DEFAULT_CONFIG.defaults, ...parsed.defaults },
+  };
 }
 
 export function saveConfig(config: AppConfig): void {
