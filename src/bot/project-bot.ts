@@ -902,10 +902,22 @@ export class ProjectBot {
     this.logger.info({ project: this.project.name }, "Starting bot");
     this.startGitNotifications();
     await this.bot.start({
-      onStart: () => {
-        this.logger.info({ project: this.project.name }, "Bot is running");
+      onStart: async () => {
+        try {
+          const me = await this.bot.api.getMe();
+          this.logger.info(
+            { event: "bot_connected", project: this.project.name, username: me.username },
+            "Bot connected to Telegram",
+          );
+        } catch {
+          this.logger.info({ event: "bot_connected", project: this.project.name }, "Bot is running");
+        }
       },
     });
+  }
+
+  getBotToken(): string {
+    return this.project.botToken;
   }
 
   async stop(): Promise<void> {

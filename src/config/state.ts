@@ -59,3 +59,14 @@ export function isDaemonRunning(): boolean {
     return false;
   }
 }
+
+export function signalDaemon(signal: NodeJS.Signals = "SIGHUP"): boolean {
+  const pid = readPidFile();
+  if (pid === null) return false;
+  try {
+    process.kill(pid, signal);
+    return true;
+  } catch {
+    return false;
+  }
+}
