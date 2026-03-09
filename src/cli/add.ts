@@ -6,6 +6,7 @@ import { loadConfig, saveConfig, addProject, configExists } from "../config/stor
 import { isDaemonRunning, signalDaemon } from "../config/state.js";
 import { validateBotToken } from "./checks.js";
 import { pollForBotConnected } from "./log-poller.js";
+import { spawnDaemon } from "./spawn-daemon.js";
 import type { ProjectConfig } from "../config/types.js";
 
 const MAX_TOKEN_ATTEMPTS = 3;
@@ -82,7 +83,7 @@ export async function addCommand(pathArg: string): Promise<void> {
       signalDaemon("SIGHUP");
     } else {
       process.stdout.write("  Starting daemon... ");
-      await spawnDaemon();
+      spawnDaemon();
     }
 
     // Poll for connectivity
@@ -98,19 +99,4 @@ export async function addCommand(pathArg: string): Promise<void> {
   } finally {
     rl.close();
   }
-}
-
-async function spawnDaemon(): Promise<void> {
-  const { spawn } = await import("node:child_process");
-  const { fileURLToPath } = await import("node:url");
-  const { dirname, join } = await import("node:path");
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = dirname(__filename);
-  const daemonPath = join(__dirname, "daemon.js");
-
-  const child = spawn(process.execPath, [daemonPath], {
-    detached: true,
-    stdio: "ignore",
-  });
-  child.unref();
 }

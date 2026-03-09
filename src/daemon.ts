@@ -177,11 +177,27 @@ async function main(): Promise<void> {
     }
   }, 60 * 60 * 1000);
 
-  // Hot-reload on SIGHUP
+  // Hot-reload on SIGHUP (with debounce to prevent race conditions)
+  let reloadInProgress = false;
+  let reloadQueued = false;
+
   process.on("SIGHUP", () => {
-    handleReload().catch((err) => {
-      logger.error({ err }, "Hot-reload failed");
-    });
+    if (reloadInProgress) {
+      reloadQueued = true;
+      return;
+    }
+    reloadInProgress = true;
+    handleReload()
+      .catch((err) => {
+        logger.error({ err }, "Hot-reload failed");
+      })
+      .finally(() => {
+        reloadInProgress = false;
+        if (reloadQueued) {
+          reloadQueued = false;
+          process.emit("SIGHUP");
+        }
+      });
   });
 
   // Graceful shutdown

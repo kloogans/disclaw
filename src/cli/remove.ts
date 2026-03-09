@@ -21,6 +21,6 @@ export async function removeCommand(name: string): Promise<void> {
   // Hot-reload daemon if running
   if (isDaemonRunning()) {
     signalDaemon("SIGHUP");
-    console.log("Bot stopped.");
+    console.log("Bot stopping...");
   }
 }

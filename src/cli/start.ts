@@ -1,9 +1,7 @@
-import { spawn } from "node:child_process";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
 import { isDaemonRunning, readPidFile } from "../config/state.js";
 import { loadConfig, configExists } from "../config/store.js";
 import { pollForBotConnected } from "./log-poller.js";
+import { spawnDaemon } from "./spawn-daemon.js";
 
 export async function startCommand(): Promise<void> {
   if (!configExists()) {
@@ -22,19 +20,9 @@ export async function startCommand(): Promise<void> {
     return;
   }
 
-  // Resolve daemon.js as sibling of the current script (both in dist/)
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = dirname(__filename);
-  const daemonPath = join(__dirname, "daemon.js");
+  const pid = spawnDaemon();
 
-  const child = spawn(process.execPath, [daemonPath], {
-    detached: true,
-    stdio: "ignore",
-  });
-
-  child.unref();
-
-  console.log(`\nDaemon started (PID: ${child.pid})\n`);
+  console.log(`\nDaemon started (PID: ${pid})\n`);
 
   // Poll for bot connectivity
   const projectNames = config.projects.map((p) => p.name);
