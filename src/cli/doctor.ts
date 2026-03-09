@@ -1,23 +1,28 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { execSync } from "node:child_process";
 import { configExists, loadConfig, getConfigDir } from "../config/store.js";
 import { isDaemonRunning } from "../config/state.js";
+import { checkNodeVersion, checkFfmpeg, checkClaudeAuth, validateBotToken } from "./checks.js";
 
 export async function doctorCommand(): Promise<void> {
   let ok = true;
   const check = (label: string, pass: boolean, detail?: string) => {
-    const icon = pass ? "\u2705" : "\u274c";
-    console.log(`${icon} ${label}${detail ? ` \u2014 ${detail}` : ""}`);
+    const icon = pass ? "✓" : "✗";
+    console.log(`  ${icon} ${label}${detail ? ` — ${detail}` : ""}`);
     if (!pass) ok = false;
   };
 
   console.log("\nvibemote doctor\n");
 
-  // Node.js version
-  const nodeVersion = process.version;
-  const major = parseInt(nodeVersion.slice(1), 10);
-  check("Node.js >= 22", major >= 22, nodeVersion);
+  // Prerequisites (from shared checks)
+  const nodeCheck = checkNodeVersion();
+  check(nodeCheck.label, nodeCheck.pass, nodeCheck.detail);
+
+  const ffmpegCheck = checkFfmpeg();
+  check(ffmpegCheck.label, ffmpegCheck.pass, ffmpegCheck.detail);
+
+  const claudeCheck = checkClaudeAuth();
+  check(claudeCheck.label, claudeCheck.pass, claudeCheck.detail);
 
   // Config exists
   check("Config file exists", configExists(), "~/.vibemote/config.json");
@@ -26,6 +31,16 @@ export async function doctorCommand(): Promise<void> {
     const config = loadConfig();
     check("Authorized users configured", config.authorizedUsers.length > 0, `${config.authorizedUsers.length} user(s)`);
     check("Projects registered", config.projects.length > 0, `${config.projects.length} project(s)`);
+
+    // Validate bot tokens
+    for (const project of config.projects) {
+      const result = await validateBotToken(project.botToken);
+      if (result.valid && result.botInfo) {
+        check(`Bot token: ${project.name}`, true, `@${result.botInfo.username}`);
+      } else {
+        check(`Bot token: ${project.name}`, false, result.error ?? "invalid");
+      }
+    }
 
     // Whisper model — check local path first, then smart-whisper manager
     const modelPath = join(getConfigDir(), "models", `ggml-${config.whisper.model}.bin`);
@@ -38,22 +53,6 @@ export async function doctorCommand(): Promise<void> {
     }
     check("Whisper model available", whisperOk, `ggml-${config.whisper.model}.bin${whisperOk && !existsSync(modelPath) ? " (via smart-whisper)" : ""}`);
   }
-
-  // ffmpeg
-  let ffmpegOk = false;
-  try {
-    execSync("ffmpeg -version", { stdio: "ignore" });
-    ffmpegOk = true;
-  } catch {}
-  check("ffmpeg installed", ffmpegOk, ffmpegOk ? "found in PATH" : "required for voice transcription");
-
-  // Claude Code auth — the SDK uses Claude Code's login, not an API key
-  let claudeAuthOk = false;
-  try {
-    execSync("claude auth status", { stdio: "ignore" });
-    claudeAuthOk = true;
-  } catch {}
-  check("Claude Code authenticated", claudeAuthOk, claudeAuthOk ? "logged in" : "run: claude auth login");
 
   // Daemon status
   check("Daemon running", isDaemonRunning());
