@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { Command } from "commander";
-import { initCommand } from "./cli/init.js";
+import { setupCommand } from "./cli/setup.js";
 import { addCommand } from "./cli/add.js";
 import { startCommand } from "./cli/start.js";
 import { stopCommand } from "./cli/stop.js";
@@ -18,9 +18,14 @@ program
   .version("0.1.0");
 
 program
-  .command("init")
-  .description("First-time setup — configure user ID, download whisper model")
-  .action(initCommand);
+  .command("setup")
+  .description("First-time setup — check prerequisites, configure user ID and whisper model")
+  .action(setupCommand);
+
+// Hidden alias for backward compatibility
+program
+  .command("init", { hidden: true })
+  .action(setupCommand);
 
 program
   .command("add")
