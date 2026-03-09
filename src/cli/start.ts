@@ -3,10 +3,11 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { isDaemonRunning, readPidFile } from "../config/state.js";
 import { loadConfig, configExists } from "../config/store.js";
+import { pollForBotConnected } from "./log-poller.js";
 
 export async function startCommand(): Promise<void> {
   if (!configExists()) {
-    console.error("Run `vibemote init` first.");
+    console.error("Run `vibemote setup` first.");
     process.exit(1);
   }
 
@@ -33,7 +34,24 @@ export async function startCommand(): Promise<void> {
 
   child.unref();
 
-  console.log(`Daemon started (PID: ${child.pid})`);
-  console.log(`${config.projects.length} project bot(s) launching...`);
-  console.log("\nOpen Telegram and message your bot(s) to start.");
+  console.log(`\nDaemon started (PID: ${child.pid})\n`);
+
+  // Poll for bot connectivity
+  const projectNames = config.projects.map((p) => p.name);
+  const { connected, pending } = await pollForBotConnected(projectNames, 8000);
+
+  for (const bot of connected) {
+    const username = bot.username ? ` — @${bot.username}` : "";
+    console.log(`  ✓ ${bot.project}${username} connected`);
+  }
+  for (const name of pending) {
+    console.log(`  ⚠ ${name} — not yet connected (check: vibemote logs ${name})`);
+  }
+
+  const total = config.projects.length;
+  if (pending.length === 0) {
+    console.log(`\n${total} bot(s) ready. Open Telegram to start.`);
+  } else {
+    console.log(`\n${connected.length}/${total} bot(s) connected.`);
+  }
 }
