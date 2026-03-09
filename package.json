@@ -6,11 +6,13 @@
   "bin": {
     "vibemote": "./dist/index.js"
   },
+  "files": ["src", "dist", "package.json", "README.md", "tsconfig.json"],
   "scripts": {
     "build": "tsup src/index.ts src/daemon.ts src/tray.ts --format esm --clean --external systray2",
     "dev": "tsup src/index.ts src/daemon.ts src/tray.ts --format esm --watch --external systray2",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
+    "prepare": "npm run build",
     "postinstall": "node -e \"const{chmodSync,existsSync}=require('fs');const{join}=require('path');const p=join(__dirname,'node_modules/systray2/traybin/tray_darwin_release');if(existsSync(p))chmodSync(p,0o755);const l=join(__dirname,'node_modules/systray2/traybin/tray_linux_release');if(existsSync(l))chmodSync(l,0o755)\""
   },
   "engines": {
