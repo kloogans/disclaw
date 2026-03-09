@@ -52,7 +52,7 @@ See [GETTING-STARTED.md](GETTING-STARTED.md) for a complete step-by-step walkthr
 
 ## Configuration
 
-After running `vibemote init`, the config file lives at `~/.vibemote/config.json`:
+After running `vibemote setup`, the config file lives at `~/.vibemote/config.json`:
 
 ```json
 {
@@ -124,7 +124,7 @@ Any project entry can override `model`, `permissionMode`, and `allowedTools`:
 
 | Command | Description |
 |---|---|
-| `vibemote init` | First-time setup -- configure user ID and whisper model |
+| `vibemote setup` | First-time setup — check prerequisites, configure user ID and whisper model |
 | `vibemote add <path>` | Register a project with a new Telegram bot |
 | `vibemote start` | Start the daemon (launches all project bots) |
 | `vibemote stop` | Stop the daemon |
@@ -132,6 +132,7 @@ Any project entry can override `model`, `permissionMode`, and `allowedTools`:
 | `vibemote status` | Show daemon PID and running state |
 | `vibemote list` | List all registered projects with their settings |
 | `vibemote remove <name>` | Unregister a project |
+| `vibemote token-update <name>` | Update a project's Telegram bot token |
 | `vibemote logs [name]` | Tail logs (daemon by default, or a specific project) |
 | `vibemote doctor` | Health check -- verify Node.js, config, ffmpeg, whisper, auth, daemon |
 | `vibemote install` | Install auto-start (LaunchAgent / systemd / Task Scheduler) |

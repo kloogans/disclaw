@@ -8,60 +8,16 @@ A step-by-step walkthrough. Follow each step in order.
 
 - Your Mac (the one with your projects)
 - Your phone with Telegram installed
-- ~10 minutes
-
-No accounts to create, no services to sign up for. BotFather is a built-in Telegram feature — you just message it like a regular contact.
+- Node.js 22+, ffmpeg, and Claude Code authenticated
+- ~5 minutes
 
 ---
 
-## Part 1: Install dependencies
-
-### Step 1: Check Node.js
-
-Open Terminal and run:
+## Step 1: Install vibemote
 
 ```bash
-node --version
+npm install -g github:yourusername/vibemote
 ```
-
-You need v22 or higher. If you don't have it:
-
-```bash
-brew install node
-```
-
-### Step 2: Install ffmpeg
-
-This is needed for voice note transcription:
-
-```bash
-brew install ffmpeg
-```
-
-### Step 3: Check Claude Code is logged in
-
-```bash
-claude auth status
-```
-
-If it says you're not authenticated:
-
-```bash
-claude auth login
-```
-
-This uses your Max subscription — no API key needed.
-
-### Step 4: Build vibemote
-
-```bash
-cd /Users/tlabropoulos/Documents/git/vibemote
-npm install
-npm run build
-npm link
-```
-
-After `npm link`, the `vibemote` command works from anywhere in your terminal.
 
 Verify it works:
 
@@ -69,196 +25,57 @@ Verify it works:
 vibemote --version
 ```
 
-Should print `0.1.0`.
+> **Building from source?** Clone the repo, run `npm install && npm run build && npm link`.
 
 ---
 
-## Part 2: Get your Telegram user ID
+## Step 2: Run setup
 
-vibemote needs your Telegram user ID to know who's allowed to talk to the bots. This prevents random people from controlling your projects.
-
-### Step 5: Message @userinfobot
-
-1. Open **Telegram** on your phone
-2. Tap the search icon at the top
-3. Search for **userinfobot**
-4. Tap on **@userinfobot** (it has a blue checkmark)
-5. Tap **Start** or send `/start`
-6. It replies with something like:
-
-```
-Id: 123456789
-First: Your Name
-Lang: en
+```bash
+vibemote setup
 ```
 
-7. **Copy the number after "Id:"** — you'll need it in the next step
+This checks prerequisites (Node.js, ffmpeg, Claude Code auth), then asks for:
+
+- **Your Telegram user ID** — open Telegram, search @userinfobot, send /start, copy the number
+- **Whisper model** — press Enter for `base` (recommended)
+
+If any prerequisites fail, setup tells you exactly what to install.
 
 ---
 
-## Part 3: Initialize vibemote
-
-### Step 6: Run init
-
-Back in your terminal:
+## Step 3: Add a project
 
 ```bash
-vibemote init
+vibemote add ~/path/to/your/project
 ```
 
-It asks two things:
+This asks for:
 
-**"Your Telegram user ID:"**
-Paste the number from step 5 (e.g., `123456789`)
+- **Project name** — press Enter to use the directory name
+- **Bot token** — create a bot in Telegram via @BotFather (send /newbot, choose a name and username, copy the token)
 
-**"Whisper model (base):"**
-Just press Enter to accept `base`. This is the model for voice note transcription. It downloads automatically the first time you send a voice note (~150MB).
+The token is validated instantly — if it's wrong, you can re-paste. Once valid, the daemon starts automatically and confirms the bot is connected.
 
-You should see:
-```
-Config saved to ~/.vibemote/config.json
-```
+### Adding more projects
+
+Repeat this step for each project. Each project gets its own bot. If the daemon is already running, new bots are added via hot-reload — no restart needed.
 
 ---
 
-## Part 4: Create a Telegram bot for your project
+## Step 4: Open Telegram and start coding
 
-Each project gets its own Telegram bot. You create bots through **@BotFather** — Telegram's built-in bot for managing bots. It's free and instant.
-
-### Step 7: Start a chat with BotFather
-
-1. Open **Telegram** on your phone
-2. Search for **BotFather**
-3. Tap on **@BotFather** (it has a blue checkmark and says "official")
-4. Tap **Start** (or send `/start` if you've used it before)
-
-BotFather replies with a list of commands.
-
-### Step 8: Create a new bot
-
-Send this message to BotFather:
-
-```
-/newbot
-```
-
-BotFather asks: **"Alright, a new bot. How are we going to call it? Please choose a name for your bot."**
-
-### Step 9: Choose a display name
-
-Type a name like:
-
-```
-My SaaS - Claude
-```
-
-This is what shows up in your Telegram chat list. Use something that tells you which project it is. You can change this later.
-
-### Step 10: Choose a username
-
-BotFather asks: **"Good. Now let's choose a username for your bot. It must end in 'bot'."**
-
-Type something like:
-
-```
-my_saas_claude_bot
-```
-
-Rules:
-- Must end in `bot`
-- Only letters, numbers, and underscores
-- Must be unique across all of Telegram
-
-If your first choice is taken, try adding numbers: `my_saas_claude_42_bot`
-
-### Step 11: Copy the bot token
-
-BotFather replies with something like:
-
-```
-Done! Congratulations on your new bot. You will find it at t.me/my_saas_claude_bot.
-
-Use this token to access the HTTP API:
-7123456789:AAHfGxKiLM8e7R3Q5p_xxxxxxxxxxx
-
-Keep your token secure and store it safely.
-```
-
-**Copy that long token** (the line that looks like `7123456789:AAHf...`). You need it in the next step.
-
-> Tip: On your phone, long-press the token to copy it. You can also message it to yourself ("Saved Messages" in Telegram) and copy it on your Mac.
-
----
-
-## Part 5: Register your project
-
-### Step 12: Add the project
-
-```bash
-vibemote add /path/to/your/project
-```
-
-Replace `/path/to/your/project` with the actual path. For example:
-
-```bash
-vibemote add ~/Documents/git/my-saas
-```
-
-It asks:
-
-**"Project name (my-saas):"**
-Press Enter to use the directory name, or type a custom name.
-
-**"Bot token:"**
-Paste the token from step 11.
-
-You should see:
-```
-Project "my-saas" registered.
-```
-
-### Want to add more projects?
-
-Repeat steps 7-12 for each project. Each project gets its own bot — your Telegram chat list becomes a project dashboard.
-
----
-
-## Part 6: Start it up
-
-### Step 13: Run the health check
-
-```bash
-vibemote doctor
-```
-
-You should see mostly green checkmarks. The whisper model might show as missing — that's fine, it downloads automatically on first voice note.
-
-### Step 14: Start the daemon
-
-```bash
-vibemote start
-```
-
-You should see:
-```
-Daemon started (PID: 12345)
-1 project bot(s) launching...
-```
-
-### Step 15: Test it in Telegram
-
-1. Open **Telegram** on your phone
-2. Search for your bot's username (e.g., `my_saas_claude_bot`)
+1. Open Telegram on your phone
+2. Search for your bot's username
 3. Tap **Start**
-4. You should see: **"My SaaS - Vibemote. Send me a message and I'll pass it to Claude."**
-5. Send a message like: **"What does this project do?"**
-6. You'll see "Working..." then Claude's response
+4. Send a message like: "What does this project do?"
+5. You'll see "Working..." then Claude's response
 
 **That's it — you're up and running!**
 
 ---
 
-## What you can do now
+## What you can do
 
 ### Text messages
 Just type normally. Claude sees your full project and works on it.
@@ -273,7 +90,6 @@ Send a screenshot or photo. Claude can see and analyze it.
 Send a file. Claude can read and process it.
 
 ### Commands
-Type these in the chat:
 
 | Command | What it does |
 |---|---|
@@ -290,31 +106,22 @@ Type these in the chat:
 
 ### Live feedback while Claude works
 
-While Claude processes your message, you'll see real-time updates:
-
-- **Thinking preview** -- Claude's extended reasoning shown live with a brain icon
-- **Streaming text** -- response text appears as it's generated
-- **Tool progress** -- elapsed time shown during long-running operations (e.g., "Bash running... 12s")
-- **Subagent status** -- notifications when Claude spawns and completes subagents
+- **Thinking preview** — Claude's extended reasoning shown live with a brain icon
+- **Streaming text** — response text appears as it's generated
+- **Tool progress** — elapsed time shown during long-running operations
+- **Subagent status** — notifications when Claude spawns and completes subagents
 
 After each response, a usage footer shows tokens used and cost:
 ```
 12.5k in · 3.2k out · 8.1k cached · $0.0234
 ```
 
-When the context window fills up, you'll see a warning:
-```
-Context 82% full — consider /new
-```
-
-Claude also suggests a follow-up action as a tappable button you can tap to send instantly.
-
 ### Permission approvals
-When Claude wants to edit files, run commands, etc., you get a popup with buttons:
+When Claude wants to edit files, run commands, etc., you get buttons:
 
-- **Allow** -- approve once
-- **Always** -- approve this tool for the rest of the session
-- **Deny** -- reject
+- **Allow** — approve once
+- **Always** — approve this tool for the rest of the session
+- **Deny** — reject
 
 ---
 
@@ -326,8 +133,6 @@ So you don't have to manually run `vibemote start` every time:
 vibemote install
 ```
 
-This makes vibemote start automatically when you log into your Mac and restart if it crashes.
-
 To remove auto-start:
 
 ```bash
@@ -336,17 +141,22 @@ vibemote uninstall
 
 ---
 
-## Quick reference
+## CLI reference
 
 ```bash
-vibemote list        # See all your projects
-vibemote status      # Is the daemon running?
-vibemote logs        # See what's happening (Ctrl+C to stop)
-vibemote logs my-saas  # Logs for a specific project
-vibemote stop        # Stop the daemon
-vibemote restart     # Restart after config changes
-vibemote remove my-saas  # Remove a project
-vibemote doctor      # Health check
+vibemote setup           # First-time setup
+vibemote add <path>      # Register a project with a bot
+vibemote remove <name>   # Remove a project
+vibemote list            # See all your projects
+vibemote status          # Daemon and bot status
+vibemote start           # Start the daemon
+vibemote stop            # Stop the daemon
+vibemote restart         # Restart the daemon
+vibemote logs [name]     # Tail logs (daemon or specific project)
+vibemote doctor          # Health check
+vibemote token-update <name>  # Update a project's bot token
+vibemote install         # Auto-start on login
+vibemote uninstall       # Remove auto-start
 ```
 
 ---
@@ -354,15 +164,18 @@ vibemote doctor      # Health check
 ## Troubleshooting
 
 **Bot doesn't respond?**
-- Check daemon is running: `vibemote status`
-- Check logs: `vibemote logs`
-- Make sure your Telegram user ID is correct in `~/.vibemote/config.json`
+- Run `vibemote status` — check if daemon is running and bot token is valid
+- Run `vibemote logs <project-name>` — look for errors
+- Verify your Telegram user ID: `vibemote doctor`
 
 **Voice notes not working?**
-- Check ffmpeg: `ffmpeg -version`
-- The whisper model downloads on first use — check `vibemote logs` for progress
+- Run `vibemote doctor` — checks ffmpeg and whisper model
+- The whisper model downloads on first use — check logs for progress
 
-**Want to change settings?**
+**Need to change a bot token?**
+```bash
+vibemote token-update my-project
+```
+
+**Want to change other settings?**
 Edit `~/.vibemote/config.json` directly, then `vibemote restart`.
-
-For the full reference, see [SETUP.md](SETUP.md).
