@@ -6,18 +6,18 @@ import { loadConfig, configExists } from "../config/store.js";
 
 export async function startCommand(): Promise<void> {
   if (!configExists()) {
-    console.error("Run `claude-control init` first.");
+    console.error("Run `vibemote init` first.");
     process.exit(1);
   }
 
   const config = loadConfig();
   if (config.projects.length === 0) {
-    console.error("No projects registered. Run: claude-control add <path>");
+    console.error("No projects registered. Run: vibemote add <path>");
     process.exit(1);
   }
 
   if (isDaemonRunning()) {
-    console.log(`Daemon already running (PID: ${readPidFile()}). Use 'claude-control restart' to restart.`);
+    console.log(`Daemon already running (PID: ${readPidFile()}). Use 'vibemote restart' to restart.`);
     return;
   }
 

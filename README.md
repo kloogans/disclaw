@@ -1,4 +1,4 @@
-# claude-control
+# vibemote
 
 Remote Claude Code control via Telegram. Run Claude as a daemon on your Mac and interact with your projects from anywhere through dedicated Telegram bots.
 
@@ -32,7 +32,7 @@ Remote Claude Code control via Telegram. Run Claude as a daemon on your Mac and 
 
 ## How It Works
 
-claude-control runs a single daemon process that manages multiple [grammy](https://grammy.dev/) bot instances, one per registered project. Each bot listens for Telegram messages and forwards them to the [Claude Agent SDK](https://github.com/anthropic-ai/claude-agent-sdk), which spawns Claude Code subprocesses scoped to the project directory.
+vibemote runs a single daemon process that manages multiple [grammy](https://grammy.dev/) bot instances, one per registered project. Each bot listens for Telegram messages and forwards them to the [Claude Agent SDK](https://github.com/anthropic-ai/claude-agent-sdk), which spawns Claude Code subprocesses scoped to the project directory.
 
 Voice notes are transcribed locally using [whisper.cpp](https://github.com/nicholasgcoles/smart-whisper) (via the smart-whisper package) -- audio never leaves your machine. Images and documents are downloaded to a temporary media directory and passed to Claude as file references, with automatic cleanup after 24 hours.
 
@@ -52,7 +52,7 @@ See [GETTING-STARTED.md](GETTING-STARTED.md) for a complete step-by-step walkthr
 
 ## Configuration
 
-After running `claude-control init`, the config file lives at `~/.claude-control/config.json`:
+After running `vibemote init`, the config file lives at `~/.vibemote/config.json`:
 
 ```json
 {
@@ -124,18 +124,18 @@ Any project entry can override `model`, `permissionMode`, and `allowedTools`:
 
 | Command | Description |
 |---|---|
-| `claude-control init` | First-time setup -- configure user ID and whisper model |
-| `claude-control add <path>` | Register a project with a new Telegram bot |
-| `claude-control start` | Start the daemon (launches all project bots) |
-| `claude-control stop` | Stop the daemon |
-| `claude-control restart` | Restart the daemon |
-| `claude-control status` | Show daemon PID and running state |
-| `claude-control list` | List all registered projects with their settings |
-| `claude-control remove <name>` | Unregister a project |
-| `claude-control logs [name]` | Tail logs (daemon by default, or a specific project) |
-| `claude-control doctor` | Health check -- verify Node.js, config, ffmpeg, whisper, auth, daemon |
-| `claude-control install` | Install auto-start (LaunchAgent / systemd / Task Scheduler) |
-| `claude-control uninstall` | Remove auto-start |
+| `vibemote init` | First-time setup -- configure user ID and whisper model |
+| `vibemote add <path>` | Register a project with a new Telegram bot |
+| `vibemote start` | Start the daemon (launches all project bots) |
+| `vibemote stop` | Stop the daemon |
+| `vibemote restart` | Restart the daemon |
+| `vibemote status` | Show daemon PID and running state |
+| `vibemote list` | List all registered projects with their settings |
+| `vibemote remove <name>` | Unregister a project |
+| `vibemote logs [name]` | Tail logs (daemon by default, or a specific project) |
+| `vibemote doctor` | Health check -- verify Node.js, config, ffmpeg, whisper, auth, daemon |
+| `vibemote install` | Install auto-start (LaunchAgent / systemd / Task Scheduler) |
+| `vibemote uninstall` | Remove auto-start |
 
 ---
 

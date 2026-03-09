@@ -12,7 +12,7 @@ export async function doctorCommand(): Promise<void> {
     if (!pass) ok = false;
   };
 
-  console.log("\nclaude-control doctor\n");
+  console.log("\nvibemote doctor\n");
 
   // Node.js version
   const nodeVersion = process.version;
@@ -20,7 +20,7 @@ export async function doctorCommand(): Promise<void> {
   check("Node.js >= 22", major >= 22, nodeVersion);
 
   // Config exists
-  check("Config file exists", configExists(), "~/.claude-control/config.json");
+  check("Config file exists", configExists(), "~/.vibemote/config.json");
 
   if (configExists()) {
     const config = loadConfig();

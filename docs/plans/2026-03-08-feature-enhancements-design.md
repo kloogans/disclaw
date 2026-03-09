@@ -1,6 +1,6 @@
 # Feature Enhancements Design
 
-**Goal:** Add 8 UX enhancements to claude-control's Telegram bot experience.
+**Goal:** Add 8 UX enhancements to vibemote's Telegram bot experience.
 
 **Architecture:** All changes are in existing modules. No new dependencies needed.
 

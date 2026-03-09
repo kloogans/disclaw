@@ -7,7 +7,7 @@ const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
  * Clean up media files older than 24 hours in a project's media directory.
  */
 export function cleanupMedia(projectPath: string): number {
-  const mediaDir = join(projectPath, ".claude-control", "media");
+  const mediaDir = join(projectPath, ".vibemote", "media");
   if (!existsSync(mediaDir)) return 0;
 
   const now = Date.now();

@@ -13,7 +13,7 @@ import { doctorCommand } from "./cli/doctor.js";
 const program = new Command();
 
 program
-  .name("claude-control")
+  .name("vibemote")
   .description("Remote Claude Code control via Telegram")
   .version("0.1.0");
 
@@ -45,7 +45,7 @@ program
     const { loadConfig } = await import("./config/store.js");
     const config = loadConfig();
     if (config.projects.length === 0) {
-      console.log("No projects registered. Run: claude-control add <path>");
+      console.log("No projects registered. Run: vibemote add <path>");
       return;
     }
     console.log("\nRegistered projects:\n");
@@ -66,7 +66,7 @@ program
     if (isDaemonRunning()) {
       console.log(`Daemon running (PID: ${readPidFile()})`);
     } else {
-      console.log("Daemon not running. Run: claude-control start");
+      console.log("Daemon not running. Run: vibemote start");
     }
   });
 

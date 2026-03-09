@@ -1,4 +1,4 @@
-# claude-control Implementation Plan
+# vibemote Implementation Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
@@ -22,7 +22,7 @@
 
 Run:
 ```bash
-cd /Users/tlabropoulos/Documents/git/claude-control
+cd /Users/tlabropoulos/Documents/git/vibemote
 npm init -y
 ```
 
@@ -30,12 +30,12 @@ Then edit `package.json`:
 
 ```json
 {
-  "name": "claude-control",
+  "name": "vibemote",
   "version": "0.1.0",
   "description": "Remote Claude Code control via Telegram",
   "type": "module",
   "bin": {
-    "claude-control": "./dist/index.js"
+    "vibemote": "./dist/index.js"
   },
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --clean",
@@ -191,7 +191,7 @@ import { homedir } from "node:os";
 import type { AppConfig, ProjectConfig } from "./types.js";
 import { DEFAULT_CONFIG } from "./types.js";
 
-const CONFIG_DIR = join(homedir(), ".claude-control");
+const CONFIG_DIR = join(homedir(), ".vibemote");
 const CONFIG_PATH = join(CONFIG_DIR, "config.json");
 
 export function ensureConfigDir(): void {
@@ -614,7 +614,7 @@ import { stopCommand } from "./cli/stop.js";
 const program = new Command();
 
 program
-  .name("claude-control")
+  .name("vibemote")
   .description("Remote Claude Code control via Telegram")
   .version("0.1.0");
 
@@ -646,7 +646,7 @@ program
     const { loadConfig } = await import("./config/store.js");
     const config = loadConfig();
     if (config.projects.length === 0) {
-      console.log("No projects registered. Run: claude-control add <path>");
+      console.log("No projects registered. Run: vibemote add <path>");
       return;
     }
     console.log("\nRegistered projects:\n");
@@ -667,7 +667,7 @@ program
     if (isDaemonRunning()) {
       console.log(`Daemon running (PID: ${readPidFile()})`);
     } else {
-      console.log("Daemon not running. Run: claude-control start");
+      console.log("Daemon not running. Run: vibemote start");
     }
   });
 
@@ -705,7 +705,7 @@ export async function initCommand(): Promise<void> {
       }
     }
 
-    console.log("\n=== claude-control Setup ===\n");
+    console.log("\n=== vibemote Setup ===\n");
 
     // Get Telegram user ID
     console.log("Step 1: Get your Telegram user ID");
@@ -736,9 +736,9 @@ export async function initCommand(): Promise<void> {
     };
 
     saveConfig(config);
-    console.log("\n\u2705 Config saved to ~/.claude-control/config.json");
+    console.log("\n\u2705 Config saved to ~/.vibemote/config.json");
     console.log("\nThe whisper model will be downloaded on first voice note.");
-    console.log("\nNext: Run `claude-control add /path/to/project` to register a project.");
+    console.log("\nNext: Run `vibemote add /path/to/project` to register a project.");
   } finally {
     rl.close();
   }
@@ -759,7 +759,7 @@ import type { ProjectConfig } from "../config/types.js";
 
 export async function addCommand(pathArg: string): Promise<void> {
   if (!configExists()) {
-    console.error("Run `claude-control init` first.");
+    console.error("Run `vibemote init` first.");
     process.exit(1);
   }
 
@@ -798,7 +798,7 @@ export async function addCommand(pathArg: string): Promise<void> {
     saveConfig(addProject(config, project));
 
     console.log(`\n\u2705 Project "${name}" registered.`);
-    console.log(`\nStart with: claude-control start`);
+    console.log(`\nStart with: vibemote start`);
   } finally {
     rl.close();
   }
@@ -818,18 +818,18 @@ import { loadConfig, configExists } from "../config/store.js";
 
 export async function startCommand(): Promise<void> {
   if (!configExists()) {
-    console.error("Run `claude-control init` first.");
+    console.error("Run `vibemote init` first.");
     process.exit(1);
   }
 
   const config = loadConfig();
   if (config.projects.length === 0) {
-    console.error("No projects registered. Run: claude-control add <path>");
+    console.error("No projects registered. Run: vibemote add <path>");
     process.exit(1);
   }
 
   if (isDaemonRunning()) {
-    console.log(`Daemon already running (PID: ${readPidFile()}). Use 'claude-control restart' to restart.`);
+    console.log(`Daemon already running (PID: ${readPidFile()}). Use 'vibemote restart' to restart.`);
     return;
   }
 
@@ -1018,7 +1018,7 @@ export function registerCommands(
   bot.command("start", async (ctx) => {
     if (!isAuthorized(ctx, config)) return;
     await ctx.reply(
-      `\ud83d\ude80 <b>${project.name}</b> — Claude Control\n\n` +
+      `\ud83d\ude80 <b>${project.name}</b> — Vibemote\n\n` +
         `Send me a message and I'll pass it to Claude.\n` +
         `Use /help for available commands.`,
       { parse_mode: "HTML" },
@@ -1990,7 +1990,7 @@ export async function downloadImage(ctx: Context, projectPath: string): Promise<
     throw new Error("Could not get file path from Telegram");
   }
 
-  const mediaDir = join(projectPath, ".claude-control", "media");
+  const mediaDir = join(projectPath, ".vibemote", "media");
   if (!existsSync(mediaDir)) mkdirSync(mediaDir, { recursive: true });
 
   const ext = file.file_path.split(".").pop() ?? "jpg";
@@ -2031,7 +2031,7 @@ export async function downloadDocument(ctx: Context, projectPath: string): Promi
     throw new Error("Could not get file path from Telegram");
   }
 
-  const mediaDir = join(projectPath, ".claude-control", "media");
+  const mediaDir = join(projectPath, ".vibemote", "media");
   if (!existsSync(mediaDir)) mkdirSync(mediaDir, { recursive: true });
 
   const filename = doc.file_name ?? `doc_${Date.now()}`;
@@ -2060,7 +2060,7 @@ const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
  * Clean up media files older than 24 hours in a project's media directory.
  */
 export function cleanupMedia(projectPath: string): number {
-  const mediaDir = join(projectPath, ".claude-control", "media");
+  const mediaDir = join(projectPath, ".vibemote", "media");
   if (!existsSync(mediaDir)) return 0;
 
   const now = Date.now();
@@ -2179,11 +2179,11 @@ git commit -m "feat: voice transcription (whisper), image, and document support"
 
 **Files:**
 - Create: `src/cli/install.ts`
-- Create: `templates/com.claude-control.daemon.plist`
+- Create: `templates/com.vibemote.daemon.plist`
 
 **Step 1: Create LaunchAgent plist template**
 
-Create `templates/com.claude-control.daemon.plist`:
+Create `templates/com.vibemote.daemon.plist`:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -2192,7 +2192,7 @@ Create `templates/com.claude-control.daemon.plist`:
 <plist version="1.0">
 <dict>
   <key>Label</key>
-  <string>com.claude-control.daemon</string>
+  <string>com.vibemote.daemon</string>
   <key>ProgramArguments</key>
   <array>
     <string>{{NODE_PATH}}</string>
@@ -2231,7 +2231,7 @@ import { execSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { getConfigDir } from "../config/store.js";
 
-const PLIST_NAME = "com.claude-control.daemon.plist";
+const PLIST_NAME = "com.vibemote.daemon.plist";
 const LAUNCH_AGENTS_DIR = join(homedir(), "Library", "LaunchAgents");
 
 export async function installCommand(): Promise<void> {
@@ -2270,7 +2270,7 @@ export async function installCommand(): Promise<void> {
   }
   execSync(`launchctl bootstrap gui/${uid} "${plistDest}"`);
 
-  console.log("\u2705 LaunchAgent installed. claude-control will auto-start on login.");
+  console.log("\u2705 LaunchAgent installed. vibemote will auto-start on login.");
   console.log(`   Plist: ${plistDest}`);
 }
 
@@ -2290,7 +2290,7 @@ export async function uninstallCommand(): Promise<void> {
   }
 
   unlinkSync(plistDest);
-  console.log("\u2705 LaunchAgent removed. claude-control will no longer auto-start.");
+  console.log("\u2705 LaunchAgent removed. vibemote will no longer auto-start.");
 }
 ```
 
@@ -2318,7 +2318,7 @@ Run:
 ```bash
 npm run build
 node dist/index.js install
-# Verify: ls ~/Library/LaunchAgents/com.claude-control.daemon.plist
+# Verify: ls ~/Library/LaunchAgents/com.vibemote.daemon.plist
 node dist/index.js uninstall
 ```
 
@@ -2343,11 +2343,11 @@ npm run build
 
 Run through each item manually:
 
-- [ ] `claude-control init` — setup completes
-- [ ] `claude-control add /path/to/project` — project registered
-- [ ] `claude-control list` — shows the project
-- [ ] `claude-control start` — daemon starts
-- [ ] `claude-control status` — shows running
+- [ ] `vibemote init` — setup completes
+- [ ] `vibemote add /path/to/project` — project registered
+- [ ] `vibemote list` — shows the project
+- [ ] `vibemote start` — daemon starts
+- [ ] `vibemote status` — shows running
 - [ ] Telegram: `/start` — welcome message
 - [ ] Telegram: `/help` — command list
 - [ ] Telegram: Send text → get Claude response
@@ -2362,9 +2362,9 @@ Run through each item manually:
 - [ ] Telegram: Send image → Claude analyzes it
 - [ ] Telegram: Send document → Claude processes it
 - [ ] Telegram: Permission prompt appears for unapproved tool → buttons work
-- [ ] `claude-control stop` → daemon stops
-- [ ] `claude-control install` → LaunchAgent installed
-- [ ] `claude-control uninstall` → LaunchAgent removed
+- [ ] `vibemote stop` → daemon stops
+- [ ] `vibemote install` → LaunchAgent installed
+- [ ] `vibemote uninstall` → LaunchAgent removed
 
 **Step 3: Fix any issues found during testing**
 
@@ -2372,14 +2372,14 @@ Run through each item manually:
 
 ```bash
 git add -A
-git commit -m "feat: claude-control v0.1.0 — complete MVP"
+git commit -m "feat: vibemote v0.1.0 — complete MVP"
 ```
 
 ---
 
 ## Summary
 
-After completing all 10 tasks, you will have a fully working `claude-control` that:
+After completing all 10 tasks, you will have a fully working `vibemote` that:
 
 1. **CLI** — `init`, `add`, `remove`, `list`, `start`, `stop`, `restart`, `status`, `install`, `uninstall`
 2. **Per-project Telegram bots** — one bot per project, chat list = dashboard

@@ -42,7 +42,7 @@ export function registerCommands(
   bot.command("start", async (ctx) => {
     if (!isAuthorized(ctx, config)) return;
     await ctx.reply(
-      `\uD83D\uDE80 <b>${escapeHtml(project.name)}</b> \u2014 Claude Control\n\n` +
+      `\uD83D\uDE80 <b>${escapeHtml(project.name)}</b> \u2014 Vibemote\n\n` +
         `Send me a message and I'll pass it to Claude.\n` +
         `Use /help for available commands.`,
       { parse_mode: "HTML" },

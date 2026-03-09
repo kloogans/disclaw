@@ -129,7 +129,7 @@ function createIconFromBitmap(bitmap: string[]): Buffer {
 }
 
 function ensureIcons(): { running: string; stopped: string } {
-  const iconDir = join(tmpdir(), "claude-control-icons");
+  const iconDir = join(tmpdir(), "vibemote-icons");
   if (!existsSync(iconDir)) mkdirSync(iconDir, { recursive: true });
 
   const runningPath = join(iconDir, "tray-running.png");
@@ -264,7 +264,7 @@ export function launchTray(): void {
       icon: currentIcon,
       isTemplateIcon: isMac,
       title: "",
-      tooltip: "claude-control",
+      tooltip: "vibemote",
       items: [
         itemStatus,
         itemProjects,
@@ -307,7 +307,7 @@ export function launchTray(): void {
         icon: newIcon,
         isTemplateIcon: isMac,
         title: "",
-        tooltip: s.running ? `claude-control (PID: ${s.pid})` : "claude-control (stopped)",
+        tooltip: s.running ? `vibemote (PID: ${s.pid})` : "vibemote (stopped)",
         items: [] as any,
       },
     });
@@ -357,7 +357,7 @@ export function launchTray(): void {
   setInterval(refreshStatus, 5000);
 
   systray.ready().then(() => {
-    console.log("claude-control menu bar started");
+    console.log("vibemote menu bar started");
   }).catch((err: unknown) => {
     console.error("Failed to start menu bar:", err);
     process.exit(1);

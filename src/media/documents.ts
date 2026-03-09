@@ -17,7 +17,7 @@ export async function downloadDocument(ctx: Context, projectPath: string): Promi
     throw new Error("Could not get file path from Telegram");
   }
 
-  const mediaDir = join(projectPath, ".claude-control", "media");
+  const mediaDir = join(projectPath, ".vibemote", "media");
   if (!existsSync(mediaDir)) mkdirSync(mediaDir, { recursive: true });
 
   const baseName = (doc.file_name ?? "file").replace(/[/\\]/g, "_");

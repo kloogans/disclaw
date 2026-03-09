@@ -4,7 +4,7 @@ import { homedir } from "node:os";
 import type { AppConfig, ProjectConfig } from "./types.js";
 import { DEFAULT_CONFIG } from "./types.js";
 
-const CONFIG_DIR = join(homedir(), ".claude-control");
+const CONFIG_DIR = join(homedir(), ".vibemote");
 const CONFIG_PATH = join(CONFIG_DIR, "config.json");
 
 export function ensureConfigDir(): void {

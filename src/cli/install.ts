@@ -31,7 +31,7 @@ function getLogDir(): string {
 
 function installMacOS(): void {
   const launchAgentsDir = join(homedir(), "Library", "LaunchAgents");
-  const plistDest = join(launchAgentsDir, "com.claude-control.daemon.plist");
+  const plistDest = join(launchAgentsDir, "com.vibemote.daemon.plist");
 
   if (!existsSync(launchAgentsDir)) {
     mkdirSync(launchAgentsDir, { recursive: true });
@@ -47,7 +47,7 @@ function installMacOS(): void {
 <plist version="1.0">
 <dict>
   <key>Label</key>
-  <string>com.claude-control.daemon</string>
+  <string>com.vibemote.daemon</string>
   <key>ProgramArguments</key>
   <array>
     <string>${nodePath}</string>
@@ -81,7 +81,7 @@ function installMacOS(): void {
   } catch {}
   execSync(`launchctl bootstrap gui/${uid} "${plistDest}"`);
 
-  console.log("LaunchAgent installed. claude-control will auto-start on login.");
+  console.log("LaunchAgent installed. vibemote will auto-start on login.");
   console.log(`  Plist: ${plistDest}`);
 
   // Also install tray LaunchAgent
@@ -89,7 +89,7 @@ function installMacOS(): void {
 }
 
 function installMacOSTray(launchAgentsDir: string, nodePath: string, logDir: string): void {
-  const plistDest = join(launchAgentsDir, "com.claude-control.tray.plist");
+  const plistDest = join(launchAgentsDir, "com.vibemote.tray.plist");
   const trayPath = getTrayPath();
 
   const template = `<?xml version="1.0" encoding="UTF-8"?>
@@ -98,7 +98,7 @@ function installMacOSTray(launchAgentsDir: string, nodePath: string, logDir: str
 <plist version="1.0">
 <dict>
   <key>Label</key>
-  <string>com.claude-control.tray</string>
+  <string>com.vibemote.tray</string>
   <key>ProgramArguments</key>
   <array>
     <string>${nodePath}</string>
@@ -139,7 +139,7 @@ function uninstallMacOS(): void {
   const uid = execSync("id -u", { encoding: "utf-8" }).trim();
   let removed = false;
 
-  const daemonPlist = join(homedir(), "Library", "LaunchAgents", "com.claude-control.daemon.plist");
+  const daemonPlist = join(homedir(), "Library", "LaunchAgents", "com.vibemote.daemon.plist");
   if (existsSync(daemonPlist)) {
     try { execSync(`launchctl bootout gui/${uid} "${daemonPlist}"`); } catch {}
     unlinkSync(daemonPlist);
@@ -147,7 +147,7 @@ function uninstallMacOS(): void {
     removed = true;
   }
 
-  const trayPlist = join(homedir(), "Library", "LaunchAgents", "com.claude-control.tray.plist");
+  const trayPlist = join(homedir(), "Library", "LaunchAgents", "com.vibemote.tray.plist");
   if (existsSync(trayPlist)) {
     try { execSync(`launchctl bootout gui/${uid} "${trayPlist}"`); } catch {}
     unlinkSync(trayPlist);
@@ -160,7 +160,7 @@ function uninstallMacOS(): void {
     return;
   }
 
-  console.log("claude-control will no longer auto-start.");
+  console.log("vibemote will no longer auto-start.");
 }
 
 // --- Linux systemd ---
@@ -171,7 +171,7 @@ function getSystemdDir(): string {
 
 function installLinux(): void {
   const systemdDir = getSystemdDir();
-  const serviceDest = join(systemdDir, "claude-control.service");
+  const serviceDest = join(systemdDir, "vibemote.service");
 
   if (!existsSync(systemdDir)) {
     mkdirSync(systemdDir, { recursive: true });
@@ -182,7 +182,7 @@ function installLinux(): void {
   const logDir = getLogDir();
 
   const template = `[Unit]
-Description=claude-control daemon
+Description=vibemote daemon
 After=network-online.target
 Wants=network-online.target
 
@@ -204,20 +204,20 @@ WantedBy=default.target
   writeFileSync(serviceDest, template, "utf-8");
 
   execSync("systemctl --user daemon-reload");
-  execSync("systemctl --user enable claude-control.service");
-  execSync("systemctl --user start claude-control.service");
+  execSync("systemctl --user enable vibemote.service");
+  execSync("systemctl --user start vibemote.service");
 
   // Enable lingering so the service runs without an active login session
   try {
     execSync("loginctl enable-linger");
   } catch {}
 
-  console.log("systemd service installed. claude-control will auto-start on login.");
+  console.log("systemd service installed. vibemote will auto-start on login.");
   console.log(`  Service: ${serviceDest}`);
 }
 
 function uninstallLinux(): void {
-  const serviceDest = join(getSystemdDir(), "claude-control.service");
+  const serviceDest = join(getSystemdDir(), "vibemote.service");
 
   if (!existsSync(serviceDest)) {
     console.log("systemd service not installed.");
@@ -225,16 +225,16 @@ function uninstallLinux(): void {
   }
 
   try {
-    execSync("systemctl --user stop claude-control.service", { stdio: "ignore" });
+    execSync("systemctl --user stop vibemote.service", { stdio: "ignore" });
   } catch {}
   try {
-    execSync("systemctl --user disable claude-control.service", { stdio: "ignore" });
+    execSync("systemctl --user disable vibemote.service", { stdio: "ignore" });
   } catch {}
 
   unlinkSync(serviceDest);
   execSync("systemctl --user daemon-reload");
 
-  console.log("systemd service removed. claude-control will no longer auto-start.");
+  console.log("systemd service removed. vibemote will no longer auto-start.");
 }
 
 // --- Windows Task Scheduler ---
@@ -244,7 +244,7 @@ function installWindows(): void {
   const daemonPath = getDaemonPath();
   getLogDir(); // ensure log dir exists
 
-  const taskName = "claude-control";
+  const taskName = "vibemote";
 
   // Remove existing task if present
   try {
@@ -261,16 +261,16 @@ function installWindows(): void {
     execSync(`schtasks /Run /TN "${taskName}"`, { stdio: "ignore" });
   } catch {}
 
-  console.log("Scheduled task installed. claude-control will auto-start on login.");
+  console.log("Scheduled task installed. vibemote will auto-start on login.");
   console.log(`  Task: ${taskName}`);
 }
 
 function uninstallWindows(): void {
-  const taskName = "claude-control";
+  const taskName = "vibemote";
 
   try {
     execSync(`schtasks /Delete /TN "${taskName}" /F`);
-    console.log("Scheduled task removed. claude-control will no longer auto-start.");
+    console.log("Scheduled task removed. vibemote will no longer auto-start.");
   } catch {
     console.log("Scheduled task not found.");
   }

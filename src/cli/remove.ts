@@ -5,7 +5,7 @@ export async function removeCommand(name: string): Promise<void> {
   const config = loadConfig();
   const exists = config.projects.some((p) => p.name === name);
   if (!exists) {
-    console.error(`Project "${name}" not found. Run: claude-control list`);
+    console.error(`Project "${name}" not found. Run: vibemote list`);
     process.exit(1);
   }
 
@@ -17,5 +17,5 @@ export async function removeCommand(name: string): Promise<void> {
   saveState(state);
 
   console.log(`Project "${name}" removed.`);
-  console.log("Restart the daemon for changes to take effect: claude-control restart");
+  console.log("Restart the daemon for changes to take effect: vibemote restart");
 }

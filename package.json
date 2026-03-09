@@ -1,10 +1,10 @@
 {
-  "name": "claude-control",
+  "name": "vibemote",
   "version": "0.1.0",
   "description": "Remote Claude Code control via Telegram",
   "type": "module",
   "bin": {
-    "claude-control": "./dist/index.js"
+    "vibemote": "./dist/index.js"
   },
   "scripts": {
     "build": "tsup src/index.ts src/daemon.ts src/tray.ts --format esm --clean --external systray2",

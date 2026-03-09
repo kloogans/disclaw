@@ -16,7 +16,7 @@ export async function initCommand(): Promise<void> {
       }
     }
 
-    console.log("\n=== claude-control Setup ===\n");
+    console.log("\n=== vibemote Setup ===\n");
 
     console.log("Step 1: Get your Telegram user ID");
     console.log("  Open Telegram, search @userinfobot, send /start");
@@ -45,9 +45,9 @@ export async function initCommand(): Promise<void> {
     };
 
     saveConfig(config);
-    console.log("\n✅ Config saved to ~/.claude-control/config.json");
+    console.log("\n✅ Config saved to ~/.vibemote/config.json");
     console.log("\nThe whisper model will be downloaded on first voice note.");
-    console.log("\nNext: Run `claude-control add /path/to/project` to register a project.");
+    console.log("\nNext: Run `vibemote add /path/to/project` to register a project.");
   } finally {
     rl.close();
   }

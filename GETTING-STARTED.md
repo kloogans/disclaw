@@ -1,4 +1,4 @@
-# Getting Started with claude-control
+# Getting Started with vibemote
 
 A step-by-step walkthrough. Follow each step in order.
 
@@ -52,21 +52,21 @@ claude auth login
 
 This uses your Max subscription — no API key needed.
 
-### Step 4: Build claude-control
+### Step 4: Build vibemote
 
 ```bash
-cd /Users/tlabropoulos/Documents/git/claude-control
+cd /Users/tlabropoulos/Documents/git/vibemote
 npm install
 npm run build
 npm link
 ```
 
-After `npm link`, the `claude-control` command works from anywhere in your terminal.
+After `npm link`, the `vibemote` command works from anywhere in your terminal.
 
 Verify it works:
 
 ```bash
-claude-control --version
+vibemote --version
 ```
 
 Should print `0.1.0`.
@@ -75,7 +75,7 @@ Should print `0.1.0`.
 
 ## Part 2: Get your Telegram user ID
 
-claude-control needs your Telegram user ID to know who's allowed to talk to the bots. This prevents random people from controlling your projects.
+vibemote needs your Telegram user ID to know who's allowed to talk to the bots. This prevents random people from controlling your projects.
 
 ### Step 5: Message @userinfobot
 
@@ -96,14 +96,14 @@ Lang: en
 
 ---
 
-## Part 3: Initialize claude-control
+## Part 3: Initialize vibemote
 
 ### Step 6: Run init
 
 Back in your terminal:
 
 ```bash
-claude-control init
+vibemote init
 ```
 
 It asks two things:
@@ -116,7 +116,7 @@ Just press Enter to accept `base`. This is the model for voice note transcriptio
 
 You should see:
 ```
-Config saved to ~/.claude-control/config.json
+Config saved to ~/.vibemote/config.json
 ```
 
 ---
@@ -195,13 +195,13 @@ Keep your token secure and store it safely.
 ### Step 12: Add the project
 
 ```bash
-claude-control add /path/to/your/project
+vibemote add /path/to/your/project
 ```
 
 Replace `/path/to/your/project` with the actual path. For example:
 
 ```bash
-claude-control add ~/Documents/git/my-saas
+vibemote add ~/Documents/git/my-saas
 ```
 
 It asks:
@@ -228,7 +228,7 @@ Repeat steps 7-12 for each project. Each project gets its own bot — your Teleg
 ### Step 13: Run the health check
 
 ```bash
-claude-control doctor
+vibemote doctor
 ```
 
 You should see mostly green checkmarks. The whisper model might show as missing — that's fine, it downloads automatically on first voice note.
@@ -236,7 +236,7 @@ You should see mostly green checkmarks. The whisper model might show as missing 
 ### Step 14: Start the daemon
 
 ```bash
-claude-control start
+vibemote start
 ```
 
 You should see:
@@ -250,7 +250,7 @@ Daemon started (PID: 12345)
 1. Open **Telegram** on your phone
 2. Search for your bot's username (e.g., `my_saas_claude_bot`)
 3. Tap **Start**
-4. You should see: **"My SaaS - Claude Control. Send me a message and I'll pass it to Claude."**
+4. You should see: **"My SaaS - Vibemote. Send me a message and I'll pass it to Claude."**
 5. Send a message like: **"What does this project do?"**
 6. You'll see "Working..." then Claude's response
 
@@ -320,18 +320,18 @@ When Claude wants to edit files, run commands, etc., you get a popup with button
 
 ## Optional: Auto-start on login
 
-So you don't have to manually run `claude-control start` every time:
+So you don't have to manually run `vibemote start` every time:
 
 ```bash
-claude-control install
+vibemote install
 ```
 
-This makes claude-control start automatically when you log into your Mac and restart if it crashes.
+This makes vibemote start automatically when you log into your Mac and restart if it crashes.
 
 To remove auto-start:
 
 ```bash
-claude-control uninstall
+vibemote uninstall
 ```
 
 ---
@@ -339,14 +339,14 @@ claude-control uninstall
 ## Quick reference
 
 ```bash
-claude-control list        # See all your projects
-claude-control status      # Is the daemon running?
-claude-control logs        # See what's happening (Ctrl+C to stop)
-claude-control logs my-saas  # Logs for a specific project
-claude-control stop        # Stop the daemon
-claude-control restart     # Restart after config changes
-claude-control remove my-saas  # Remove a project
-claude-control doctor      # Health check
+vibemote list        # See all your projects
+vibemote status      # Is the daemon running?
+vibemote logs        # See what's happening (Ctrl+C to stop)
+vibemote logs my-saas  # Logs for a specific project
+vibemote stop        # Stop the daemon
+vibemote restart     # Restart after config changes
+vibemote remove my-saas  # Remove a project
+vibemote doctor      # Health check
 ```
 
 ---
@@ -354,15 +354,15 @@ claude-control doctor      # Health check
 ## Troubleshooting
 
 **Bot doesn't respond?**
-- Check daemon is running: `claude-control status`
-- Check logs: `claude-control logs`
-- Make sure your Telegram user ID is correct in `~/.claude-control/config.json`
+- Check daemon is running: `vibemote status`
+- Check logs: `vibemote logs`
+- Make sure your Telegram user ID is correct in `~/.vibemote/config.json`
 
 **Voice notes not working?**
 - Check ffmpeg: `ffmpeg -version`
-- The whisper model downloads on first use — check `claude-control logs` for progress
+- The whisper model downloads on first use — check `vibemote logs` for progress
 
 **Want to change settings?**
-Edit `~/.claude-control/config.json` directly, then `claude-control restart`.
+Edit `~/.vibemote/config.json` directly, then `vibemote restart`.
 
 For the full reference, see [SETUP.md](SETUP.md).

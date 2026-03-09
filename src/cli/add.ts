@@ -7,7 +7,7 @@ import type { ProjectConfig } from "../config/types.js";
 
 export async function addCommand(pathArg: string): Promise<void> {
   if (!configExists()) {
-    console.error("Run `claude-control init` first.");
+    console.error("Run `vibemote init` first.");
     process.exit(1);
   }
 
@@ -46,7 +46,7 @@ export async function addCommand(pathArg: string): Promise<void> {
     saveConfig(addProject(config, project));
 
     console.log(`\n✅ Project "${name}" registered.`);
-    console.log(`\nStart with: claude-control start`);
+    console.log(`\nStart with: vibemote start`);
   } finally {
     rl.close();
   }

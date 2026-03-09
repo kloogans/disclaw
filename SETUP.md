@@ -1,6 +1,6 @@
-# claude-control Setup Guide
+# vibemote Setup Guide
 
-Complete guide to get claude-control running on your Mac.
+Complete guide to get vibemote running on your Mac.
 
 ## Prerequisites
 
@@ -47,7 +47,7 @@ You need the Telegram app on your phone (and optionally desktop).
 ### Step 1: Build the project
 
 ```bash
-cd /Users/tlabropoulos/Documents/git/claude-control
+cd /Users/tlabropoulos/Documents/git/vibemote
 npm install
 npm run build
 ```
@@ -58,7 +58,7 @@ Option A — npm link (recommended):
 ```bash
 npm link
 ```
-Now `claude-control` works from anywhere.
+Now `vibemote` works from anywhere.
 
 Option B — use directly:
 ```bash
@@ -80,14 +80,14 @@ node dist/index.js <command>
 ### Step 4: Run init
 
 ```bash
-claude-control init
+vibemote init
 ```
 
 It will ask for:
 - **Your Telegram user ID** — paste the number from step 3
 - **Whisper model** — press Enter for `base` (recommended), or choose `tiny` (faster) or `small` (more accurate)
 
-This creates `~/.claude-control/config.json`.
+This creates `~/.vibemote/config.json`.
 
 > The whisper model downloads automatically the first time you send a voice note.
 
@@ -109,7 +109,7 @@ Each project gets its own Telegram bot. You'll create one via BotFather.
 ### Step 6: Register the project
 
 ```bash
-claude-control add /path/to/your/project
+vibemote add /path/to/your/project
 ```
 
 It will ask for:
@@ -121,7 +121,7 @@ Repeat steps 5-6 for each project you want to control remotely.
 ### Verify your projects
 
 ```bash
-claude-control list
+vibemote list
 ```
 
 ---
@@ -131,7 +131,7 @@ claude-control list
 ### Step 7: Start the daemon
 
 ```bash
-claude-control start
+vibemote start
 ```
 
 This launches a background process that runs all your project bots.
@@ -146,7 +146,7 @@ This launches a background process that runs all your project bots.
 ### Verify everything is healthy
 
 ```bash
-claude-control doctor
+vibemote doctor
 ```
 
 This checks Node.js, config, ffmpeg, whisper model, API key, and daemon status.
@@ -197,36 +197,36 @@ Editing src/index.ts
 
 | Command | Description |
 |---|---|
-| `claude-control init` | First-time setup |
-| `claude-control add <path>` | Register a project with a new bot |
-| `claude-control remove <name>` | Unregister a project |
-| `claude-control list` | Show all registered projects |
-| `claude-control start` | Start the daemon |
-| `claude-control stop` | Stop the daemon |
-| `claude-control restart` | Restart the daemon |
-| `claude-control status` | Show daemon PID and status |
-| `claude-control logs [name]` | Tail logs (`daemon` by default, or a project name) |
-| `claude-control doctor` | Health check |
-| `claude-control install` | Auto-start on login (macOS LaunchAgent) |
-| `claude-control uninstall` | Remove auto-start |
+| `vibemote init` | First-time setup |
+| `vibemote add <path>` | Register a project with a new bot |
+| `vibemote remove <name>` | Unregister a project |
+| `vibemote list` | Show all registered projects |
+| `vibemote start` | Start the daemon |
+| `vibemote stop` | Stop the daemon |
+| `vibemote restart` | Restart the daemon |
+| `vibemote status` | Show daemon PID and status |
+| `vibemote logs [name]` | Tail logs (`daemon` by default, or a project name) |
+| `vibemote doctor` | Health check |
+| `vibemote install` | Auto-start on login (macOS LaunchAgent) |
+| `vibemote uninstall` | Remove auto-start |
 
 ---
 
 ## Auto-Start on Login (Optional)
 
-To have claude-control start automatically when you log into your Mac:
+To have vibemote start automatically when you log into your Mac:
 
 ```bash
-claude-control install
+vibemote install
 ```
 
-This creates a LaunchAgent at `~/Library/LaunchAgents/com.claude-control.daemon.plist` with:
+This creates a LaunchAgent at `~/Library/LaunchAgents/com.vibemote.daemon.plist` with:
 - **RunAtLoad** — starts when you log in
 - **KeepAlive** — auto-restarts if it crashes
 
 To remove:
 ```bash
-claude-control uninstall
+vibemote uninstall
 ```
 
 ---
@@ -236,29 +236,29 @@ claude-control uninstall
 ### "Daemon not running"
 
 ```bash
-claude-control start
-claude-control status  # Should show PID
+vibemote start
+vibemote status  # Should show PID
 ```
 
 ### Check logs
 
 ```bash
-claude-control logs           # Daemon logs
-claude-control logs my-saas   # Specific project logs
+vibemote logs           # Daemon logs
+vibemote logs my-saas   # Specific project logs
 ```
 
 ### Bot not responding in Telegram
 
-1. Make sure the daemon is running: `claude-control status`
-2. Make sure your user ID matches: check `~/.claude-control/config.json` → `authorizedUsers`
+1. Make sure the daemon is running: `vibemote status`
+2. Make sure your user ID matches: check `~/.vibemote/config.json` → `authorizedUsers`
 3. Make sure you're messaging the right bot (search its username in Telegram)
-4. Check logs: `claude-control logs`
+4. Check logs: `vibemote logs`
 
 ### Voice transcription not working
 
 1. Check ffmpeg: `ffmpeg -version`
 2. The whisper model downloads on first use — check logs for download progress
-3. Run `claude-control doctor` to verify
+3. Run `vibemote doctor` to verify
 
 ### Claude authentication issues
 
@@ -266,14 +266,14 @@ Make sure you're logged into Claude Code:
 ```bash
 claude auth login
 ```
-Then restart the daemon: `claude-control restart`
+Then restart the daemon: `vibemote restart`
 
 ### Reset everything
 
 ```bash
-claude-control stop
-rm -rf ~/.claude-control
-claude-control init
+vibemote stop
+rm -rf ~/.vibemote
+vibemote init
 ```
 
 ---
@@ -282,18 +282,18 @@ claude-control init
 
 | What | Where |
 |---|---|
-| Config | `~/.claude-control/config.json` |
-| State (sessions, PID) | `~/.claude-control/state.json` |
-| Logs | `~/.claude-control/logs/` |
-| Whisper models | `~/.claude-control/models/` or `~/.smart-whisper/models/` |
-| Media (per project) | `<project>/.claude-control/media/` (auto-cleaned after 24h) |
-| LaunchAgent | `~/Library/LaunchAgents/com.claude-control.daemon.plist` |
+| Config | `~/.vibemote/config.json` |
+| State (sessions, PID) | `~/.vibemote/state.json` |
+| Logs | `~/.vibemote/logs/` |
+| Whisper models | `~/.vibemote/models/` or `~/.smart-whisper/models/` |
+| Media (per project) | `<project>/.vibemote/media/` (auto-cleaned after 24h) |
+| LaunchAgent | `~/Library/LaunchAgents/com.vibemote.daemon.plist` |
 
 ---
 
 ## Configuration Reference
 
-The config at `~/.claude-control/config.json`:
+The config at `~/.vibemote/config.json`:
 
 ```json
 {
