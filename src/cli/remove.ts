@@ -1,5 +1,5 @@
 import { loadConfig, saveConfig, removeProject } from "../config/store.js";
-import { loadState, saveState } from "../config/state.js";
+import { loadState, saveState, isDaemonRunning, signalDaemon } from "../config/state.js";
 
 export async function removeCommand(name: string): Promise<void> {
   const config = loadConfig();
@@ -17,5 +17,10 @@ export async function removeCommand(name: string): Promise<void> {
   saveState(state);
 
   console.log(`Project "${name}" removed.`);
-  console.log("Restart the daemon for changes to take effect: vibemote restart");
+
+  // Hot-reload daemon if running
+  if (isDaemonRunning()) {
+    signalDaemon("SIGHUP");
+    console.log("Bot stopped.");
+  }
 }

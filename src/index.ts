@@ -7,6 +7,7 @@ import { startCommand } from "./cli/start.js";
 import { stopCommand } from "./cli/stop.js";
 import { installCommand, uninstallCommand } from "./cli/install.js";
 import { removeCommand } from "./cli/remove.js";
+import { tokenUpdateCommand } from "./cli/token-update.js";
 import { logsCommand } from "./cli/logs.js";
 import { doctorCommand } from "./cli/doctor.js";
 
@@ -68,11 +69,38 @@ program
   .description("Show daemon and bot statuses")
   .action(async () => {
     const { isDaemonRunning, readPidFile } = await import("./config/state.js");
-    if (isDaemonRunning()) {
-      console.log(`Daemon running (PID: ${readPidFile()})`);
-    } else {
-      console.log("Daemon not running. Run: vibemote start");
+    const { loadConfig, configExists } = await import("./config/store.js");
+    const { validateBotToken } = await import("./cli/checks.js");
+
+    if (!configExists()) {
+      console.log("Not configured. Run: vibemote setup");
+      return;
     }
+
+    if (isDaemonRunning()) {
+      console.log(`\nDaemon running (PID: ${readPidFile()})\n`);
+    } else {
+      console.log("\nDaemon not running. Run: vibemote start\n");
+    }
+
+    const config = loadConfig();
+    if (config.projects.length === 0) {
+      console.log("No projects registered. Run: vibemote add <path>");
+      return;
+    }
+
+    console.log("Projects:");
+    for (const p of config.projects) {
+      const model = p.model ?? config.defaults.model;
+      const mode = p.permissionMode ?? config.defaults.permissionMode;
+      const result = await validateBotToken(p.botToken);
+      if (result.valid && result.botInfo) {
+        console.log(`  ✓ ${p.name} — @${result.botInfo.username} (${model}, ${mode} mode)`);
+      } else {
+        console.log(`  ✗ ${p.name} — token invalid or bot unreachable`);
+      }
+    }
+    console.log(`\n${config.projects.length} project(s) registered.`);
   });
 
 program
@@ -98,6 +126,12 @@ program
   .description("Remove a registered project")
   .argument("<name>", "Project name to remove")
   .action(removeCommand);
+
+program
+  .command("token-update")
+  .description("Update a project's Telegram bot token")
+  .argument("<name>", "Project name")
+  .action(tokenUpdateCommand);
 
 program
   .command("logs")
