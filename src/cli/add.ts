@@ -3,11 +3,16 @@ import { stdin, stdout } from "node:process";
 import { existsSync } from "node:fs";
 import { resolve, basename } from "node:path";
 import { loadConfig, saveConfig, addProject, configExists } from "../config/store.js";
+import { isDaemonRunning, signalDaemon } from "../config/state.js";
+import { validateBotToken } from "./checks.js";
+import { pollForBotConnected } from "./log-poller.js";
 import type { ProjectConfig } from "../config/types.js";
+
+const MAX_TOKEN_ATTEMPTS = 3;
 
 export async function addCommand(pathArg: string): Promise<void> {
   if (!configExists()) {
-    console.error("Run `vibemote init` first.");
+    console.error("Run `vibemote setup` first.");
     process.exit(1);
   }
 
@@ -23,17 +28,41 @@ export async function addCommand(pathArg: string): Promise<void> {
     const defaultName = basename(projectPath);
     const name = (await rl.question(`Project name (${defaultName}): `)).trim() || defaultName;
 
-    console.log("\nCreate a Telegram bot for this project:");
-    console.log("  1. Open Telegram, search @BotFather");
-    console.log("  2. Send /newbot");
-    console.log(`  3. Name it something like "${name} - Claude"`);
-    console.log("  4. Copy the bot token\n");
-
-    const botToken = (await rl.question("Bot token: ")).trim();
-    if (!botToken || !botToken.includes(":")) {
-      console.error("Invalid bot token. Should look like: 123456789:ABCdefGHIjklMNOpqrsTUVwxyz");
-      rl.close();
+    // Check for duplicate project name
+    const config = loadConfig();
+    if (config.projects.some((p) => p.name === name)) {
+      console.error(`\nProject "${name}" already exists. Use a different name or run: vibemote remove ${name}`);
       return;
+    }
+
+    console.log("\nCreate a Telegram bot:");
+    console.log("  Open Telegram → @BotFather → /newbot → copy the token\n");
+
+    // Token validation with retry
+    let botToken = "";
+    let botUsername = "";
+    for (let attempt = 1; attempt <= MAX_TOKEN_ATTEMPTS; attempt++) {
+      const token = (await rl.question("Bot token: ")).trim();
+      if (!token) {
+        console.log("  ✗ Token cannot be empty.\n");
+        if (attempt < MAX_TOKEN_ATTEMPTS) continue;
+        console.error("Max attempts reached.");
+        return;
+      }
+
+      const result = await validateBotToken(token);
+      if (result.valid && result.botInfo) {
+        botToken = token;
+        botUsername = result.botInfo.username;
+        console.log(`  ✓ Token valid — @${botUsername}\n`);
+        break;
+      }
+
+      console.log(`  ✗ ${result.error ?? "Invalid token"} — check and try again.\n`);
+      if (attempt >= MAX_TOKEN_ATTEMPTS) {
+        console.error("Max attempts reached.");
+        return;
+      }
     }
 
     const project: ProjectConfig = {
@@ -42,12 +71,46 @@ export async function addCommand(pathArg: string): Promise<void> {
       botToken,
     };
 
-    const config = loadConfig();
-    saveConfig(addProject(config, project));
+    const updatedConfig = addProject(config, project);
+    saveConfig(updatedConfig);
 
-    console.log(`\n✅ Project "${name}" registered.`);
-    console.log(`\nStart with: vibemote start`);
+    console.log(`✅ Project "${name}" registered.`);
+
+    // Auto-start or hot-reload daemon
+    if (isDaemonRunning()) {
+      process.stdout.write("  Reloading daemon... ");
+      signalDaemon("SIGHUP");
+    } else {
+      process.stdout.write("  Starting daemon... ");
+      await spawnDaemon();
+    }
+
+    // Poll for connectivity
+    const { connected, pending } = await pollForBotConnected([name], 5000);
+    if (connected.length > 0) {
+      console.log("✓ connected");
+    } else {
+      console.log("⚠ not yet connected");
+      console.log(`  Check: vibemote logs ${name}`);
+    }
+
+    console.log(`\nOpen Telegram and message @${botUsername}`);
   } finally {
     rl.close();
   }
+}
+
+async function spawnDaemon(): Promise<void> {
+  const { spawn } = await import("node:child_process");
+  const { fileURLToPath } = await import("node:url");
+  const { dirname, join } = await import("node:path");
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = dirname(__filename);
+  const daemonPath = join(__dirname, "daemon.js");
+
+  const child = spawn(process.execPath, [daemonPath], {
+    detached: true,
+    stdio: "ignore",
+  });
+  child.unref();
 }
