@@ -1,8 +1,5 @@
 # vibemote
 
-[![CI](https://github.com/james/vibemote/actions/workflows/ci.yml/badge.svg)](https://github.com/james/vibemote/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
 Remote Claude Code control via Discord. Run Claude as a daemon and interact with your projects from anywhere through Discord channels.
 
 ---
@@ -193,12 +190,6 @@ src/
 ├── index.ts          # CLI entry point
 └── tray.ts           # System tray entry point
 ```
-
----
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, PR guidelines, and code style.
 
 ---
 
