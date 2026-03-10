@@ -1,19 +1,13 @@
 export interface ProjectConfig {
   name: string;
   path: string;
-  botToken: string;
+  channelId: string;
   model?: string;
   permissionMode?: PermissionMode;
   allowedTools?: string[];
 }
 
-export type PermissionMode = "default" | "acceptEdits" | "bypassPermissions" | "plan" | "auto" | "dontAsk";
-
-export interface WhisperConfig {
-  model: string;
-  gpu: boolean;
-  language: string;
-}
+export type PermissionMode = "default" | "acceptEdits" | "bypassPermissions" | "plan" | "dontAsk";
 
 export type Effort = "low" | "medium" | "high" | "max";
 
@@ -30,8 +24,9 @@ export interface DefaultsConfig {
 }
 
 export interface AppConfig {
-  authorizedUsers: number[];
-  whisper: WhisperConfig;
+  discordBotToken: string;
+  discordGuildId: string;
+  authorizedUsers: string[];
   defaults: DefaultsConfig;
   messageBatchDelayMs: number;
   permissionTimeoutMs: number;
@@ -45,17 +40,14 @@ export interface AppState {
 }
 
 export const DEFAULT_CONFIG: AppConfig = {
+  discordBotToken: "",
+  discordGuildId: "",
   authorizedUsers: [],
-  whisper: {
-    model: "base",
-    gpu: true,
-    language: "auto",
-  },
   defaults: {
-    model: "sonnet",
+    model: "claude-opus-4-6",
     permissionMode: "default",
     allowedTools: ["Read", "Glob", "Grep", "WebSearch"],
-    settingSources: ["project"],
+    settingSources: ["user", "project"],
   },
   messageBatchDelayMs: 3000,
   permissionTimeoutMs: 300000,

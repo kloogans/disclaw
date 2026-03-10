@@ -1,12 +1,12 @@
-const TELEGRAM_MAX_LENGTH = 4096;
+const DISCORD_MAX_LENGTH = 2000;
 const RESERVED_CHARS = 50;
 
 /**
- * Split a long message into chunks that fit within Telegram's 4096 char limit.
+ * Split a long message into chunks that fit within Discord's 2000 char limit.
  * Splits at natural boundaries: double newlines > single newlines > spaces.
- * Avoids splitting inside HTML tags and re-opens any unclosed tags in the next chunk.
+ * Avoids splitting inside Markdown code blocks — closes and re-opens them across chunks.
  */
-export function chunkMessage(text: string, maxLength = TELEGRAM_MAX_LENGTH - RESERVED_CHARS): string[] {
+export function chunkMessage(text: string, maxLength = DISCORD_MAX_LENGTH - RESERVED_CHARS): string[] {
   if (text.length <= maxLength) {
     return [text];
   }
@@ -49,24 +49,14 @@ export function chunkMessage(text: string, maxLength = TELEGRAM_MAX_LENGTH - RES
       splitIndex = maxLength;
     }
 
-    // Avoid splitting inside an HTML tag (e.g. <pre><code class="...">)
-    const lastOpenBracket = remaining.lastIndexOf("<", splitIndex);
-    if (lastOpenBracket > -1 && lastOpenBracket > splitIndex - 100) {
-      const closingBracket = remaining.indexOf(">", lastOpenBracket);
-      if (closingBracket === -1 || closingBracket >= splitIndex) {
-        // We're inside an unclosed tag — split before it
-        splitIndex = lastOpenBracket;
-      }
-    }
-
     let chunk = remaining.slice(0, splitIndex).trimEnd();
     remaining = remaining.slice(splitIndex).trimStart();
 
-    // Close any unclosed HTML tags in this chunk and re-open in the next
-    const { closed, reopened } = balanceHtmlTags(chunk);
+    // Handle Markdown code block continuity across chunks
+    const { closed, prefix } = balanceCodeBlocks(chunk);
     chunk = closed;
-    if (reopened && remaining.length > 0) {
-      remaining = reopened + remaining;
+    if (prefix && remaining.length > 0) {
+      remaining = prefix + remaining;
     }
 
     chunks.push(chunk);
@@ -76,36 +66,35 @@ export function chunkMessage(text: string, maxLength = TELEGRAM_MAX_LENGTH - RES
 }
 
 /**
- * Find unclosed HTML tags and close them. Returns the closed string
- * and the tags to re-open in the next chunk.
+ * Track open triple-backtick code blocks. If a chunk ends inside an unclosed
+ * code block, close it and return a re-opening fence for the next chunk.
  */
-function balanceHtmlTags(text: string): { closed: string; reopened: string } {
-  const tagStack: { name: string; fullTag: string }[] = [];
-  const tagRegex = /<\/?([a-z][a-z0-9]*)[^>]*>/gi;
+function balanceCodeBlocks(text: string): { closed: string; prefix: string } {
+  // Count triple-backtick fences to determine if we're inside a code block
+  const fenceRegex = /^```(\w*)/gm;
+  let insideBlock = false;
+  let language = "";
   let match: RegExpExecArray | null;
 
-  while ((match = tagRegex.exec(text)) !== null) {
-    const fullMatch = match[0];
-    const tagName = match[1].toLowerCase();
-
-    if (fullMatch.endsWith("/>") || ["br", "hr", "img", "input"].includes(tagName)) {
-      continue;
-    }
-
-    if (fullMatch.startsWith("</")) {
-      const lastIndex = tagStack.findLastIndex((t) => t.name === tagName);
-      if (lastIndex >= 0) tagStack.splice(lastIndex, 1);
+  while ((match = fenceRegex.exec(text)) !== null) {
+    if (insideBlock) {
+      // This is a closing fence
+      insideBlock = false;
+      language = "";
     } else {
-      tagStack.push({ name: tagName, fullTag: fullMatch });
+      // This is an opening fence
+      insideBlock = true;
+      language = match[1];
     }
   }
 
-  if (tagStack.length === 0) {
-    return { closed: text, reopened: "" };
+  if (!insideBlock) {
+    return { closed: text, prefix: "" };
   }
 
-  const closingTags = [...tagStack].reverse().map((t) => `</${t.name}>`).join("");
-  const openingTags = tagStack.map((t) => t.fullTag).join("");
-
-  return { closed: text + closingTags, reopened: openingTags };
+  // We're inside an unclosed code block — close it and prepare re-opener
+  return {
+    closed: text + "\n```",
+    prefix: "```" + language + "\n",
+  };
 }

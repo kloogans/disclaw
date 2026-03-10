@@ -14,19 +14,28 @@ export async function stopCommand(): Promise<void> {
 
   try {
     process.kill(pid, "SIGTERM");
-    // Wait for process to actually exit (up to 5 seconds)
-    for (let i = 0; i < 50; i++) {
-      try {
-        process.kill(pid, 0);
-      } catch {
-        break;
-      }
-      await new Promise((r) => setTimeout(r, 100));
-    }
-    console.log(`Daemon stopped (PID: ${pid})`);
   } catch {
     console.log("Daemon process not found. Cleaning up PID file.");
+    removePidFile();
+    return;
   }
 
-  removePidFile();
+  // Wait for process to actually exit (up to 5 seconds)
+  let died = false;
+  for (let i = 0; i < 50; i++) {
+    try {
+      process.kill(pid, 0);
+    } catch {
+      died = true;
+      break;
+    }
+    await new Promise((r) => setTimeout(r, 100));
+  }
+
+  if (died) {
+    console.log(`Daemon stopped (PID: ${pid})`);
+    removePidFile();
+  } else {
+    console.error(`Daemon (PID: ${pid}) did not stop within 5 seconds. Try: kill -9 ${pid}`);
+  }
 }

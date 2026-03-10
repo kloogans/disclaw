@@ -54,8 +54,12 @@ export function isDaemonRunning(): boolean {
   try {
     process.kill(pid, 0);
     return true;
-  } catch {
-    removePidFile();
+  } catch (err) {
+    // ESRCH = process doesn't exist, safe to clean up PID file
+    // EPERM = process exists but belongs to another user, don't remove
+    if ((err as NodeJS.ErrnoException).code === "ESRCH") {
+      removePidFile();
+    }
     return false;
   }
 }

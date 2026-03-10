@@ -1,45 +1,48 @@
 # vibemote
 
-Remote Claude Code control via Telegram. Run Claude as a daemon on your Mac and interact with your projects from anywhere through dedicated Telegram bots.
+[![CI](https://github.com/james/vibemote/actions/workflows/ci.yml/badge.svg)](https://github.com/james/vibemote/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+Remote Claude Code control via Discord. Run Claude as a daemon and interact with your projects from anywhere through Discord channels.
 
 ---
 
 ## Features
 
-- **One bot per project** -- each project gets its own Telegram bot, turning your chat list into a project dashboard
-- **Voice notes** -- speak into Telegram and your voice is transcribed locally via whisper.cpp (no cloud transcription)
-- **Images and documents** -- send screenshots, photos, or files for Claude to analyze
-- **Permission approval via inline keyboards** -- approve, always-approve, or deny tool usage with tap-friendly buttons
-- **Model and effort switching** -- change models (sonnet, opus, haiku) and effort levels mid-conversation
-- **Auto-start** -- install as a macOS LaunchAgent, Linux systemd service, or Windows scheduled task that starts on login and auto-restarts on crash
-- **Multi-turn conversations** -- send multiple messages that get batched intelligently before sending to Claude
-- **Session management** -- list past sessions with tappable resume buttons, or hand off to Claude Code CLI
-- **Live response streaming** -- see Claude's response as it types, updated every few seconds
-- **Thinking preview** -- watch Claude's extended reasoning live (brain icon) before the response streams in
-- **Tool progress heartbeats** -- see elapsed time during long-running tool operations
-- **Subagent notifications** -- get notified when Claude spawns and completes subagents
-- **Token usage tracking** -- per-turn token counts (input/output/cached) and cost shown after every response
-- **Context window monitoring** -- see context usage percentage, with warnings at 80%+ to suggest starting fresh
-- **Rate limit warnings** -- proactive alerts when approaching or hitting rate limits
-- **Context compaction status** -- notification when Claude compacts session history
-- **Prompt suggestions** -- tappable inline button with Claude's suggested follow-up after each response
-- **Typing indicator** -- Telegram shows "typing..." while Claude is working
-- **Pinned responses** -- Claude's last response is automatically pinned for easy reference
-- **Git status notifications** -- periodic alerts when your project has uncommitted changes
-- **`/undo` and `/diff`** -- revert file changes or view git status from the chat
+- **One channel per project** — each project gets its own Discord channel, with a single bot managing them all
+- **Images and documents** — send screenshots, photos, or files for Claude to analyze
+- **Permission approval via buttons** — approve, always-approve, or deny tool usage with Discord buttons
+- **Slash commands** — Discord-native command interface with autocomplete
+- **Model and effort switching** — change models (sonnet, opus, haiku) and effort levels mid-conversation
+- **Auto-start** — install as a systemd service (Linux), macOS LaunchAgent, or Windows scheduled task
+- **Multi-turn conversations** — send multiple messages that get batched intelligently before sending to Claude
+- **Session management** — list past sessions with tappable resume buttons, or hand off to Claude Code CLI
+- **Live response streaming** — see Claude's response as it types, updated every few seconds
+- **Thinking preview** — watch Claude's extended reasoning live before the response streams in
+- **Tool progress heartbeats** — see elapsed time during long-running tool operations
+- **Subagent notifications** — get notified when Claude spawns and completes subagents
+- **Token usage tracking** — per-turn token counts (input/output/cached) and cost shown after every response
+- **Context window monitoring** — see context usage percentage, with warnings at 80%+ to suggest starting fresh
+- **Rate limit warnings** — proactive alerts when approaching or hitting rate limits
+- **Context compaction status** — notification when Claude compacts session history
+- **Prompt suggestions** — tappable button with Claude's suggested follow-up after each response
+- **Typing indicator** — Discord shows "typing..." while Claude is working
+- **Pinned responses** — Claude's last response is automatically pinned for easy reference
+- **Git status notifications** — periodic alerts when your project has uncommitted changes
+- **`/undo` and `/diff`** — revert file changes or view git status from the chat
 
 ---
 
 ## How It Works
 
-vibemote runs a single daemon process that manages multiple [grammy](https://grammy.dev/) bot instances, one per registered project. Each bot listens for Telegram messages and forwards them to the [Claude Agent SDK](https://github.com/anthropic-ai/claude-agent-sdk), which spawns Claude Code subprocesses scoped to the project directory.
+vibemote runs a single daemon process with one [discord.js](https://discord.js.org/) client connected to your Discord server. Each registered project is mapped to a Discord channel. Messages in a project's channel are forwarded to the [Claude Agent SDK](https://github.com/anthropic-ai/claude-agent-sdk), which spawns Claude Code subprocesses scoped to the project directory.
 
-Voice notes are transcribed locally using [whisper.cpp](https://github.com/nicholasgcoles/smart-whisper) (via the smart-whisper package) -- audio never leaves your machine. Images and documents are downloaded to a temporary media directory and passed to Claude as file references, with automatic cleanup after 24 hours.
+Images and documents are downloaded to a temporary media directory and passed to Claude as file references, with automatic cleanup after 24 hours.
 
 ```
-Telegram --> grammy bot --> Claude Agent SDK --> Claude Code subprocess
-                                                     |
-                                              (project directory)
+Discord --> discord.js client --> Claude Agent SDK --> Claude Code subprocess
+                                                           |
+                                                    (project directory)
 ```
 
 ---
@@ -56,14 +59,11 @@ After running `vibemote setup`, the config file lives at `~/.vibemote/config.jso
 
 ```json
 {
-  "authorizedUsers": [123456789],
-  "whisper": {
-    "model": "base",
-    "gpu": true,
-    "language": "auto"
-  },
+  "discordBotToken": "MTIzNDU2Nzg5...",
+  "discordGuildId": "123456789012345678",
+  "authorizedUsers": ["123456789012345678"],
   "defaults": {
-    "model": "sonnet",
+    "model": "claude-opus-4-6",
     "effort": "high",
     "thinking": "adaptive",
     "permissionMode": "default",
@@ -78,7 +78,7 @@ After running `vibemote setup`, the config file lives at `~/.vibemote/config.jso
     {
       "name": "my-saas",
       "path": "/path/to/my-saas",
-      "botToken": "7123456789:AAHf..."
+      "channelId": "123456789012345678"
     }
   ]
 }
@@ -88,20 +88,19 @@ After running `vibemote setup`, the config file lives at `~/.vibemote/config.jso
 
 | Option | Default | Description |
 |---|---|---|
-| `authorizedUsers` | `[]` | Array of Telegram user IDs allowed to interact with bots |
-| `defaults.model` | `"sonnet"` | Default Claude model (`sonnet`, `opus`, `haiku`) |
+| `discordBotToken` | `""` | Discord bot token (from Developer Portal) |
+| `discordGuildId` | `""` | Discord server (guild) ID |
+| `authorizedUsers` | `[]` | Array of Discord user ID strings allowed to interact with the bot |
+| `defaults.model` | `"claude-opus-4-6"` | Default Claude model (`claude-opus-4-6`, `sonnet`, `haiku`, or any model ID) |
 | `defaults.effort` | (not set) | Reasoning effort level: `low`, `medium`, `high`, or `max` |
 | `defaults.thinking` | (not set) | Thinking mode: `adaptive`, `enabled`, or `disabled` |
 | `defaults.permissionMode` | `"default"` | How tool permissions are handled: `default`, `acceptEdits`, `bypassPermissions`, `plan`, `auto`, or `dontAsk` |
 | `defaults.allowedTools` | `["Read", "Glob", "Grep", "WebSearch"]` | Tools auto-approved without prompting |
 | `defaults.settingSources` | `["project"]` | Where to load project settings from |
 | `defaults.maxTurns` | (not set) | Maximum number of conversation turns per request |
-| `whisper.model` | `"base"` | Whisper model size: `tiny`, `base`, `small`, `medium`, `large` |
-| `whisper.gpu` | `true` | Use GPU acceleration for transcription |
-| `whisper.language` | `"auto"` | Language for transcription, or `"auto"` for detection |
 | `messageBatchDelayMs` | `3000` | Delay in ms to batch multiple messages before sending to Claude |
 | `permissionTimeoutMs` | `300000` | Timeout in ms before a permission request is auto-denied (5 minutes) |
-| `maxResponseChars` | `50000` | Maximum characters in a single Telegram response |
+| `maxResponseChars` | `50000` | Maximum characters before response is sent as a file attachment |
 
 ### Per-Project Overrides
 
@@ -111,7 +110,7 @@ Any project entry can override `model`, `permissionMode`, and `allowedTools`:
 {
   "name": "my-saas",
   "path": "/path/to/my-saas",
-  "botToken": "7123456789:AAHf...",
+  "channelId": "123456789012345678",
   "model": "opus",
   "permissionMode": "auto",
   "allowedTools": ["Read", "Edit", "Bash", "Glob", "Grep"]
@@ -124,29 +123,28 @@ Any project entry can override `model`, `permissionMode`, and `allowedTools`:
 
 | Command | Description |
 |---|---|
-| `vibemote setup` | First-time setup — check prerequisites, configure user ID and whisper model |
-| `vibemote add <path>` | Register a project with a new Telegram bot |
-| `vibemote start` | Start the daemon (launches all project bots) |
+| `vibemote setup` | First-time setup — configure Discord bot and server |
+| `vibemote add <path>` | Register a project (auto-creates a Discord channel or use existing) |
+| `vibemote start` | Start the daemon |
 | `vibemote stop` | Stop the daemon |
 | `vibemote restart` | Restart the daemon |
-| `vibemote status` | Show daemon PID and running state |
+| `vibemote status` | Show daemon status and project info |
 | `vibemote list` | List all registered projects with their settings |
 | `vibemote remove <name>` | Unregister a project |
-| `vibemote token-update <name>` | Update a project's Telegram bot token |
+| `vibemote token-update` | Update the Discord bot token |
 | `vibemote logs [name]` | Tail logs (daemon by default, or a specific project) |
-| `vibemote doctor` | Health check -- verify Node.js, config, ffmpeg, whisper, auth, daemon |
-| `vibemote install` | Install auto-start (LaunchAgent / systemd / Task Scheduler) |
+| `vibemote doctor` | Health check — verify Node.js, config, auth, daemon |
+| `vibemote install` | Install auto-start (systemd / LaunchAgent / Task Scheduler) |
 | `vibemote uninstall` | Remove auto-start |
 
 ---
 
-## Telegram Commands
+## Discord Slash Commands
 
-These commands are available inside each project's Telegram bot chat:
+These commands are available in any project channel:
 
 | Command | Description |
 |---|---|
-| `/start` | Initialize the bot and show welcome message |
 | `/new` | Start a fresh Claude session |
 | `/help` | Show all available commands |
 | `/cancel` | Interrupt the current operation |
@@ -154,7 +152,7 @@ These commands are available inside each project's Telegram bot chat:
 | `/mode <mode>` | Switch permission mode (`auto`, `plan`, `default`) |
 | `/undo` | Revert last file changes (uncommitted modifications) |
 | `/diff` | Show uncommitted changes and recent commits |
-| `/sessions` | List past sessions with tappable resume buttons |
+| `/sessions` | List past sessions with resume buttons |
 | `/resume <id>` | Resume a previous session by ID |
 | `/handoff` | Get a `claude --resume` command to continue the session in Claude Code |
 | `/status` | Show project info, model, session, token usage, and context window |
@@ -164,10 +162,43 @@ These commands are available inside each project's Telegram bot chat:
 
 ## Requirements
 
-- **macOS, Linux, or Windows** -- auto-start via LaunchAgent (macOS), systemd (Linux), or Task Scheduler (Windows)
-- **Node.js 22+** -- required for the runtime
-- **Claude Code** with a Max subscription -- the Agent SDK authenticates via your existing Claude Code login (no API key needed)
-- **ffmpeg** -- required for voice note transcription (`brew install ffmpeg`)
+- **Linux, macOS, or Windows** — auto-start via systemd (Linux), LaunchAgent (macOS), or Task Scheduler (Windows)
+- **Node.js 22+** — required for the runtime
+- **Claude Code** with a Max subscription — the Agent SDK authenticates via your existing Claude Code login (no API key needed)
+- **A Discord server** — you need a server where you can add a bot
+
+---
+
+## Architecture
+
+```
+src/
+├── bot/              # Discord bot layer
+│   ├── discord-client.ts   # Discord.js client, event routing
+│   ├── project-handler.ts  # Per-project orchestrator
+│   ├── stream-manager.ts   # Typing indicators, stream previews
+│   ├── git-helpers.ts      # Git operations (diff, undo, status)
+│   ├── usage-tracker.ts    # Cost and token tracking
+│   ├── commands.ts         # Slash command definitions
+│   └── formatting.ts       # Markdown formatting for Discord
+├── claude/           # Claude Agent SDK integration
+│   ├── session-manager.ts  # SDK query lifecycle
+│   ├── sdk-types.ts        # Type guards for SDK messages
+│   └── system-prompt.ts    # System prompt builder
+├── cli/              # CLI commands (setup, add, start, stop, etc.)
+├── config/           # Configuration and state management
+├── media/            # Image and document handling
+├── utils/            # Shared utilities (chunker, secrets, throttle)
+├── daemon.ts         # Background daemon entry point
+├── index.ts          # CLI entry point
+└── tray.ts           # System tray entry point
+```
+
+---
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, PR guidelines, and code style.
 
 ---
 

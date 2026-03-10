@@ -141,7 +141,9 @@ function uninstallMacOS(): void {
 
   const daemonPlist = join(homedir(), "Library", "LaunchAgents", "com.vibemote.daemon.plist");
   if (existsSync(daemonPlist)) {
-    try { execSync(`launchctl bootout gui/${uid} "${daemonPlist}"`); } catch {}
+    try {
+      execSync(`launchctl bootout gui/${uid} "${daemonPlist}"`);
+    } catch {}
     unlinkSync(daemonPlist);
     console.log("Daemon LaunchAgent removed.");
     removed = true;
@@ -149,7 +151,9 @@ function uninstallMacOS(): void {
 
   const trayPlist = join(homedir(), "Library", "LaunchAgents", "com.vibemote.tray.plist");
   if (existsSync(trayPlist)) {
-    try { execSync(`launchctl bootout gui/${uid} "${trayPlist}"`); } catch {}
+    try {
+      execSync(`launchctl bootout gui/${uid} "${trayPlist}"`);
+    } catch {}
     unlinkSync(trayPlist);
     console.log("Tray LaunchAgent removed.");
     removed = true;
@@ -252,9 +256,7 @@ function installWindows(): void {
   } catch {}
 
   // Create a task that runs at logon and restarts on failure
-  execSync(
-    `schtasks /Create /TN "${taskName}" /TR "\\"${nodePath}\\" \\"${daemonPath}\\"" /SC ONLOGON /RL HIGHEST /F`,
-  );
+  execSync(`schtasks /Create /TN "${taskName}" /TR "\\"${nodePath}\\" \\"${daemonPath}\\"" /SC ONLOGON /RL HIGHEST /F`);
 
   // Start it now
   try {

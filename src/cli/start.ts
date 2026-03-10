@@ -22,11 +22,16 @@ export async function startCommand(): Promise<void> {
 
   const pid = spawnDaemon();
 
+  if (!pid) {
+    console.error("Failed to spawn daemon process. Run: npm run build");
+    process.exit(1);
+  }
+
   console.log(`\nDaemon started (PID: ${pid})\n`);
 
   // Poll for bot connectivity
   const projectNames = config.projects.map((p) => p.name);
-  const { connected, pending } = await pollForBotConnected(projectNames, 8000);
+  const { connected, pending } = await pollForBotConnected(projectNames, 15000);
 
   for (const bot of connected) {
     const username = bot.username ? ` — @${bot.username}` : "";
@@ -38,7 +43,7 @@ export async function startCommand(): Promise<void> {
 
   const total = config.projects.length;
   if (pending.length === 0) {
-    console.log(`\n${total} bot(s) ready. Open Telegram to start.`);
+    console.log(`\n${total} project(s) ready. Open Discord to start.`);
   } else {
     console.log(`\n${connected.length}/${total} bot(s) connected.`);
   }

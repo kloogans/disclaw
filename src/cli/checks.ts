@@ -1,5 +1,4 @@
 import { execSync } from "node:child_process";
-import { platform } from "node:os";
 
 export interface CheckResult {
   label: string;
@@ -8,10 +7,11 @@ export interface CheckResult {
 }
 
 export interface BotInfo {
-  id: number;
+  id: string;
   username: string;
-  first_name: string;
 }
+
+// Note: execSync calls below use hardcoded commands, not user input.
 
 export function checkNodeVersion(): CheckResult {
   const version = process.version;
@@ -20,20 +20,7 @@ export function checkNodeVersion(): CheckResult {
   return {
     label: "Node.js >= 22",
     pass,
-    detail: pass ? version : `${version} — upgrade: ${platform() === "darwin" ? "brew install node" : "https://nodejs.org"}`,
-  };
-}
-
-export function checkFfmpeg(): CheckResult {
-  let pass = false;
-  try {
-    execSync("ffmpeg -version", { stdio: "ignore" });
-    pass = true;
-  } catch {}
-  return {
-    label: "ffmpeg installed",
-    pass,
-    detail: pass ? "found in PATH" : `not found — install: ${platform() === "darwin" ? "brew install ffmpeg" : "https://ffmpeg.org"}`,
+    detail: pass ? version : `${version} — upgrade: https://nodejs.org`,
   };
 }
 
@@ -51,7 +38,7 @@ export function checkClaudeAuth(): CheckResult {
 }
 
 export function runAllPrerequisites(): { allPassed: boolean; results: CheckResult[] } {
-  const results = [checkNodeVersion(), checkFfmpeg(), checkClaudeAuth()];
+  const results = [checkNodeVersion(), checkClaudeAuth()];
   const allPassed = results.every((r) => r.pass);
   return { allPassed, results };
 }
@@ -63,21 +50,27 @@ export function printCheckResults(results: CheckResult[]): void {
   }
 }
 
-export async function validateBotToken(token: string): Promise<{ valid: boolean; botInfo?: BotInfo; error?: string }> {
+/**
+ * Validate a Discord bot token by calling the Discord API.
+ */
+export async function validateDiscordToken(
+  token: string,
+): Promise<{ valid: boolean; botInfo?: BotInfo; error?: string }> {
   try {
-    const res = await fetch(`https://api.telegram.org/bot${token}/getMe`);
-    const data = (await res.json()) as { ok?: boolean; result?: { id: number; username: string; first_name: string }; description?: string };
-    if (data.ok && data.result) {
+    const res = await fetch("https://discord.com/api/v10/users/@me", {
+      headers: { Authorization: `Bot ${token}` },
+    });
+    if (!res.ok) {
+      return { valid: false, error: `Discord API returned ${res.status}` };
+    }
+    const data = (await res.json()) as { id?: string; username?: string };
+    if (data.id && data.username) {
       return {
         valid: true,
-        botInfo: {
-          id: data.result.id,
-          username: data.result.username,
-          first_name: data.result.first_name,
-        },
+        botInfo: { id: data.id, username: data.username },
       };
     }
-    return { valid: false, error: data.description || "Invalid token" };
+    return { valid: false, error: "Unexpected response from Discord" };
   } catch (err) {
     return { valid: false, error: `Network error: ${err instanceof Error ? err.message : String(err)}` };
   }

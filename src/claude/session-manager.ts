@@ -1,8 +1,25 @@
 import { query, listSessions } from "@anthropic-ai/claude-agent-sdk";
-import type { Query, SDKMessage, PermissionMode as SDKPermissionMode } from "@anthropic-ai/claude-agent-sdk";
+import type {
+  Query,
+  SDKMessage,
+  PermissionMode as SDKPermissionMode,
+  PermissionResult as SDKPermissionResult,
+} from "@anthropic-ai/claude-agent-sdk";
 import type { AppConfig, ProjectConfig, PermissionMode } from "../config/types.js";
 import { saveSessionId, getLastSessionId } from "../config/state.js";
 import { buildSystemPrompt } from "./system-prompt.js";
+import {
+  isSystemInit,
+  isSystemStatus,
+  isSystemTaskStarted,
+  isSystemTaskNotification,
+  isStreamEvent,
+  isToolProgress,
+  isRateLimit,
+  isPromptSuggestion,
+  type ContentBlock,
+  type ResultSuccessMessage,
+} from "./sdk-types.js";
 import type pino from "pino";
 
 export interface TokenUsage {
@@ -27,11 +44,12 @@ interface SessionCallbacks {
   onPromptSuggestion: (suggestion: string) => void;
   onResult: (result: string, costUsd: number, usage: TokenUsage | null) => void;
   onError: (error: string) => void;
+  onStreamEnd: () => void;
   onSessionId: (sessionId: string) => void;
   onPermissionRequest: (
     toolName: string,
     input: Record<string, unknown>,
-    respond: (result: { behavior: string; message?: string; updatedInput?: Record<string, unknown> }) => void,
+    respond: (result: SDKPermissionResult) => void,
   ) => Promise<void>;
 }
 
@@ -44,13 +62,10 @@ export class SessionManager {
   private _currentSessionId: string | null = null;
   private abortController: AbortController | null = null;
   private sessionAllowedTools = new Set<string>();
+  private sessionPermissionMode: PermissionMode | null = null;
+  private sessionModel: string | null = null;
 
-  constructor(
-    project: ProjectConfig,
-    config: AppConfig,
-    logger: pino.Logger,
-    callbacks: SessionCallbacks,
-  ) {
+  constructor(project: ProjectConfig, config: AppConfig, logger: pino.Logger, callbacks: SessionCallbacks) {
     this.project = project;
     this.config = config;
     this.logger = logger;
@@ -63,10 +78,8 @@ export class SessionManager {
 
   async sendMessage(text: string): Promise<void> {
     if (this._currentSessionId) {
-      // Multi-turn: start a new query that resumes the existing session
       await this.startSession(text, this._currentSessionId);
     } else {
-      // First message: create new session
       await this.startSession(text);
     }
   }
@@ -74,8 +87,10 @@ export class SessionManager {
   async startSession(prompt: string, resumeId?: string): Promise<void> {
     this.close();
 
-    const model = this.project.model ?? this.config.defaults.model;
-    const permissionMode = (this.project.permissionMode ?? this.config.defaults.permissionMode) as PermissionMode;
+    const model = this.sessionModel ?? this.project.model ?? this.config.defaults.model;
+    const permissionMode = (this.sessionPermissionMode ??
+      this.project.permissionMode ??
+      this.config.defaults.permissionMode) as PermissionMode;
     const allowedTools = this.project.allowedTools ?? this.config.defaults.allowedTools;
     const effort = this.config.defaults.effort;
     const thinking = this.config.defaults.thinking;
@@ -83,7 +98,6 @@ export class SessionManager {
 
     this.abortController = new AbortController();
 
-    // Check for last session to resume on first start
     const resumeValue = resumeId || getLastSessionId(this.project.name);
     const resume = resumeValue && resumeValue.length > 0 ? resumeValue : undefined;
 
@@ -108,14 +122,14 @@ export class SessionManager {
           this.logger.warn({ stderr: data.trim() }, "Claude stderr");
         },
         canUseTool: async (toolName, input, _options) => {
-          // Check session-level allow list first
-          if (this.sessionAllowedTools.has(toolName)) {
-            return { behavior: "allow" } as any;
+          if (toolName === "ExitPlanMode" || toolName === "EnterPlanMode") {
+            return { behavior: "allow" } satisfies SDKPermissionResult;
           }
-          return new Promise((resolve) => {
-            this.callbacks.onPermissionRequest(toolName, input as Record<string, unknown>, (result) => {
-              resolve(result as any);
-            });
+          if (this.sessionAllowedTools.has(toolName)) {
+            return { behavior: "allow" } satisfies SDKPermissionResult;
+          }
+          return new Promise<SDKPermissionResult>((resolve) => {
+            this.callbacks.onPermissionRequest(toolName, input as Record<string, unknown>, resolve);
           });
         },
       },
@@ -134,96 +148,63 @@ export class SessionManager {
     } catch (err) {
       this.logger.error({ err }, "Error consuming messages");
       this.callbacks.onError(String(err));
+    } finally {
+      this.callbacks.onStreamEnd();
     }
   }
 
   private handleMessage(message: SDKMessage): void {
-    switch (message.type) {
-      case "system": {
-        const msg = message as any;
-        if (message.subtype === "init") {
-          this._currentSessionId = message.session_id;
-          saveSessionId(this.project.name, message.session_id);
-          this.callbacks.onSessionId(message.session_id);
-          this.logger.info({ sessionId: message.session_id }, "Session initialized");
-        } else if (message.subtype === "status") {
-          this.callbacks.onCompacting(msg.status === "compacting");
-        } else if (message.subtype === "task_started") {
-          this.callbacks.onTaskStarted(msg.task_id ?? "", msg.prompt ?? "");
-        } else if (message.subtype === "task_notification") {
-          this.callbacks.onTaskNotification(
-            msg.task_id ?? "",
-            msg.status ?? "completed",
-            msg.summary ?? "",
-          );
+    if (isSystemInit(message)) {
+      this._currentSessionId = message.session_id;
+      saveSessionId(this.project.name, message.session_id);
+      this.callbacks.onSessionId(message.session_id);
+      this.logger.info({ sessionId: message.session_id }, "Session initialized");
+    } else if (isSystemStatus(message)) {
+      this.callbacks.onCompacting(message.status === "compacting");
+    } else if (isSystemTaskStarted(message)) {
+      this.callbacks.onTaskStarted(message.task_id ?? "", message.prompt ?? "");
+    } else if (isSystemTaskNotification(message)) {
+      this.callbacks.onTaskNotification(message.task_id ?? "", message.status ?? "completed", message.summary ?? "");
+    } else if (isStreamEvent(message)) {
+      const event = message.event;
+      if (event?.type === "content_block_delta") {
+        if (event.delta?.type === "text_delta" && event.delta.text) {
+          this.callbacks.onStreamDelta(event.delta.text);
+        } else if (event.delta?.type === "thinking_delta" && event.delta.thinking) {
+          this.callbacks.onThinkingDelta(event.delta.thinking);
         }
-        break;
       }
-
-      case "stream_event": {
-        const event = (message as any).event;
-        if (event?.type === "content_block_delta") {
-          if (event.delta?.type === "text_delta" && event.delta.text) {
-            this.callbacks.onStreamDelta(event.delta.text);
-          } else if (event.delta?.type === "thinking_delta" && event.delta.thinking) {
-            this.callbacks.onThinkingDelta(event.delta.thinking);
-          }
+    } else if (isToolProgress(message)) {
+      this.callbacks.onToolProgress(message.tool_name ?? "tool", message.elapsed_time_seconds ?? 0);
+    } else if (isRateLimit(message)) {
+      const info = message.rate_limit_info ?? {};
+      this.callbacks.onRateLimit(info.status ?? "unknown", info.resetsAt ?? null);
+    } else if (isPromptSuggestion(message)) {
+      if (message.suggestion) {
+        this.callbacks.onPromptSuggestion(message.suggestion);
+      }
+    } else if (message.type === "assistant") {
+      const content = message.message.content as ContentBlock[];
+      const text = content
+        .filter((block) => block.type === "text")
+        .map((block) => block.text ?? "")
+        .join("");
+      if (text) {
+        this.callbacks.onAssistantMessage(text);
+      }
+      for (const block of content) {
+        if (block.type === "tool_use" && block.name) {
+          this.callbacks.onToolUse(block.name, (block.input ?? {}) as Record<string, unknown>);
         }
-        break;
       }
-
-      case "tool_progress": {
-        const msg = message as any;
-        this.callbacks.onToolProgress(msg.tool_name ?? "tool", msg.elapsed_time_seconds ?? 0);
-        break;
-      }
-
-      case "rate_limit_event": {
-        const msg = message as any;
-        const info = msg.rate_limit_info ?? {};
-        this.callbacks.onRateLimit(info.status ?? "unknown", info.resetsAt ?? null);
-        break;
-      }
-
-      case "prompt_suggestion": {
-        const msg = message as any;
-        if (msg.suggestion) {
-          this.callbacks.onPromptSuggestion(msg.suggestion);
-        }
-        break;
-      }
-
-      case "assistant": {
-        const text = message.message.content
-          .filter((block: any) => block.type === "text")
-          .map((block: any) => block.text)
-          .join("");
-        if (text) {
-          this.callbacks.onAssistantMessage(text);
-        }
-        for (const block of message.message.content) {
-          if ((block as any).type === "tool_use") {
-            this.callbacks.onToolUse(
-              (block as any).name,
-              (block as any).input as Record<string, unknown>,
-            );
-          }
-        }
-        break;
-      }
-
-      case "result": {
-        if (message.subtype === "success") {
-          const usage = this.extractUsage(message);
-          this.callbacks.onResult(message.result, message.total_cost_usd, usage);
-        } else {
-          const errors = (message as { errors?: string[] }).errors;
-          const errorMsg = errors && errors.length > 0
-            ? errors.join(", ")
-            : `Session ended: ${message.subtype}`;
-          this.callbacks.onError(errorMsg);
-        }
-        break;
+    } else if (message.type === "result") {
+      if (message.subtype === "success") {
+        const usage = this.extractUsage(message as unknown as ResultSuccessMessage);
+        this.callbacks.onResult(message.result, message.total_cost_usd, usage);
+      } else {
+        const errors = (message as { errors?: string[] }).errors;
+        const errorMsg = errors && errors.length > 0 ? errors.join(", ") : `Session ended: ${message.subtype}`;
+        this.callbacks.onError(errorMsg);
       }
     }
   }
@@ -232,6 +213,8 @@ export class SessionManager {
     this.close();
     this._currentSessionId = null;
     this.sessionAllowedTools.clear();
+    this.sessionPermissionMode = null;
+    this.sessionModel = null;
     saveSessionId(this.project.name, "");
     this.logger.info("New session requested");
   }
@@ -248,19 +231,19 @@ export class SessionManager {
   }
 
   async setModel(model: string): Promise<void> {
+    this.sessionModel = model;
     if (this.currentQuery) {
       await this.currentQuery.setModel(model);
-      this.logger.info({ model }, "Model changed");
     }
-    this.project.model = model;
+    this.logger.info({ model }, "Model changed (session-level)");
   }
 
   async setPermissionMode(mode: string): Promise<void> {
+    this.sessionPermissionMode = mode as PermissionMode;
     if (this.currentQuery) {
       await this.currentQuery.setPermissionMode(mode as SDKPermissionMode);
-      this.logger.info({ mode }, "Permission mode changed");
     }
-    this.project.permissionMode = mode as PermissionMode;
+    this.logger.info({ mode }, "Permission mode changed (session-level)");
   }
 
   async listSessions(): Promise<{ text: string; sessions: { sessionId: string; summary: string }[] }> {
@@ -273,10 +256,10 @@ export class SessionManager {
         const date = new Date(s.lastModified).toLocaleDateString();
         const summary = s.summary.slice(0, 60);
         const id = s.sessionId.slice(0, 8);
-        return `${i + 1}. <code>${id}</code> ${date}\n   ${summary}`;
+        return `${i + 1}. \`${id}\` ${date}\n   ${summary}`;
       });
       return {
-        text: `<b>Past Sessions:</b>\n\n${lines.join("\n\n")}`,
+        text: `**Past Sessions:**\n\n${lines.join("\n\n")}`,
         sessions: sessions.map((s) => ({ sessionId: s.sessionId, summary: s.summary })),
       };
     } catch (err) {
@@ -284,13 +267,12 @@ export class SessionManager {
     }
   }
 
-  private extractUsage(message: any): TokenUsage | null {
+  private extractUsage(message: ResultSuccessMessage): TokenUsage | null {
     try {
       const modelUsage = message.modelUsage;
       if (!modelUsage) return null;
 
-      // Get the first (usually only) model's usage
-      const models = Object.values(modelUsage) as any[];
+      const models = Object.values(modelUsage);
       if (models.length === 0) return null;
 
       const model = models[0];

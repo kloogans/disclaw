@@ -1,8 +1,6 @@
-import { existsSync } from "node:fs";
-import { join } from "node:path";
-import { configExists, loadConfig, getConfigDir } from "../config/store.js";
+import { configExists, loadConfig } from "../config/store.js";
 import { isDaemonRunning } from "../config/state.js";
-import { checkNodeVersion, checkFfmpeg, checkClaudeAuth, validateBotToken } from "./checks.js";
+import { checkNodeVersion, checkClaudeAuth, validateDiscordToken } from "./checks.js";
 
 export async function doctorCommand(): Promise<void> {
   let ok = true;
@@ -18,9 +16,6 @@ export async function doctorCommand(): Promise<void> {
   const nodeCheck = checkNodeVersion();
   check(nodeCheck.label, nodeCheck.pass, nodeCheck.detail);
 
-  const ffmpegCheck = checkFfmpeg();
-  check(ffmpegCheck.label, ffmpegCheck.pass, ffmpegCheck.detail);
-
   const claudeCheck = checkClaudeAuth();
   check(claudeCheck.label, claudeCheck.pass, claudeCheck.detail);
 
@@ -32,26 +27,25 @@ export async function doctorCommand(): Promise<void> {
     check("Authorized users configured", config.authorizedUsers.length > 0, `${config.authorizedUsers.length} user(s)`);
     check("Projects registered", config.projects.length > 0, `${config.projects.length} project(s)`);
 
-    // Validate bot tokens
-    for (const project of config.projects) {
-      const result = await validateBotToken(project.botToken);
+    // Validate Discord bot token (single token for all projects)
+    if (config.discordBotToken) {
+      const result = await validateDiscordToken(config.discordBotToken);
       if (result.valid && result.botInfo) {
-        check(`Bot token: ${project.name}`, true, `@${result.botInfo.username}`);
+        check("Discord bot token", true, result.botInfo.username);
       } else {
-        check(`Bot token: ${project.name}`, false, result.error ?? "invalid");
+        check("Discord bot token", false, result.error ?? "invalid");
       }
+    } else {
+      check("Discord bot token", false, "not configured");
     }
 
-    // Whisper model — check local path first, then smart-whisper manager
-    const modelPath = join(getConfigDir(), "models", `ggml-${config.whisper.model}.bin`);
-    let whisperOk = existsSync(modelPath);
-    if (!whisperOk) {
-      try {
-        const { manager } = await import("smart-whisper");
-        whisperOk = manager.check(config.whisper.model);
-      } catch {}
+    // Check guild ID is set
+    check("Discord guild ID", !!config.discordGuildId, config.discordGuildId || "not configured");
+
+    // Check each project has a channel ID
+    for (const project of config.projects) {
+      check(`Channel: ${project.name}`, !!project.channelId, project.channelId || "not configured");
     }
-    check("Whisper model available", whisperOk, `ggml-${config.whisper.model}.bin${whisperOk && !existsSync(modelPath) ? " (via smart-whisper)" : ""}`);
   }
 
   // Daemon status

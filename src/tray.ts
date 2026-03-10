@@ -3,7 +3,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { deflateSync } from "node:zlib";
-import { execSync, spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -40,53 +40,53 @@ function pngChunk(type: string, data: Buffer): Buffer {
 // Running: filled square eyes (alive), Stopped: X eyes (off)
 // '#' = filled pixel, '.' = transparent
 const ROBOT_RUNNING: string[] = [
-  ".........##...........",  // antenna tip
-  ".........##...........",  // antenna
-  "........####..........",  // antenna base
-  "...################...",  // head top (rounded)
-  "..##################..",  //
-  ".####################.",  //
-  ".####################.",  //
-  ".####..######..#####..",  // eyes row 1 (filled squares)
-  ".####..######..#####..",  // eyes row 2
-  ".####..######..#####..",  // eyes row 3
-  ".####################.",  //
-  ".####################.",  //
-  ".####################.",  //
-  ".#####..........####..",  // mouth row 1
-  ".######........#####..",  // mouth row 2
-  ".####################.",  //
-  ".####################.",  //
-  "..##################..",  //
-  "...################...",  // head bottom (rounded)
-  "......##########......",  // jaw
-  "......................",  //
-  "......................",  //
+  ".........##...........", // antenna tip
+  ".........##...........", // antenna
+  "........####..........", // antenna base
+  "...################...", // head top (rounded)
+  "..##################..", //
+  ".####################.", //
+  ".####################.", //
+  ".####..######..#####..", // eyes row 1 (filled squares)
+  ".####..######..#####..", // eyes row 2
+  ".####..######..#####..", // eyes row 3
+  ".####################.", //
+  ".####################.", //
+  ".####################.", //
+  ".#####..........####..", // mouth row 1
+  ".######........#####..", // mouth row 2
+  ".####################.", //
+  ".####################.", //
+  "..##################..", //
+  "...################...", // head bottom (rounded)
+  "......##########......", // jaw
+  "......................", //
+  "......................", //
 ];
 
 const ROBOT_STOPPED: string[] = [
-  ".........##...........",  // antenna tip
-  ".........##...........",  // antenna
-  "........####..........",  // antenna base
-  "...################...",  // head top (rounded)
-  "..##################..",  //
-  ".####################.",  //
-  ".####################.",  //
-  ".###.#..####.#..####..",  // X eyes row 1
-  ".####..######..#####..",  // X eyes row 2
-  ".###.#..####.#..####..",  // X eyes row 3
-  ".####################.",  //
-  ".####################.",  //
-  ".####################.",  //
-  ".########....########.",  // flat mouth (neutral)
-  ".########....########.",  //
-  ".####################.",  //
-  ".####################.",  //
-  "..##################..",  //
-  "...################...",  // head bottom (rounded)
-  "......##########......",  // jaw
-  "......................",  //
-  "......................",  //
+  ".........##...........", // antenna tip
+  ".........##...........", // antenna
+  "........####..........", // antenna base
+  "...################...", // head top (rounded)
+  "..##################..", //
+  ".####################.", //
+  ".####################.", //
+  ".###.#..####.#..####..", // X eyes row 1
+  ".####..######..#####..", // X eyes row 2
+  ".###.#..####.#..####..", // X eyes row 3
+  ".####################.", //
+  ".####################.", //
+  ".####################.", //
+  ".########....########.", // flat mouth (neutral)
+  ".########....########.", //
+  ".####################.", //
+  ".####################.", //
+  "..##################..", //
+  "...################...", // head bottom (rounded)
+  "......##########......", // jaw
+  "......................", //
+  "......................", //
 ];
 
 function createIconFromBitmap(bitmap: string[]): Buffer {
@@ -101,7 +101,7 @@ function createIconFromBitmap(bitmap: string[]): Buffer {
     for (let x = 0; x < width; x++) {
       const px = rowOffset + 1 + x * 4;
       if (row[x] === "#") {
-        raw[px] = 255;     // R (white for non-template platforms)
+        raw[px] = 255; // R (white for non-template platforms)
         raw[px + 1] = 255; // G
         raw[px + 2] = 255; // B
         raw[px + 3] = 255; // A
@@ -163,7 +163,7 @@ function runCommand(cmd: string): string {
   try {
     // Find the CLI entry point
     const cliPath = join(__dirname, "index.js");
-    return execSync(`node "${cliPath}" ${cmd}`, {
+    return execFileSync("node", [cliPath, cmd], {
       encoding: "utf-8",
       timeout: 10000,
     }).trim();
@@ -174,14 +174,18 @@ function runCommand(cmd: string): string {
 
 function openInTerminal(cmd: string): void {
   const cliPath = join(__dirname, "index.js");
-  const command = `node '${cliPath}' ${cmd}`;
   if (platform() === "darwin") {
-    spawn("osascript", ["-e", `tell application "Terminal" to do script "${command}"`], { detached: true, stdio: "ignore" });
+    // AppleScript requires a command string — values are not user-controlled
+    const command = `node '${cliPath}' ${cmd}`;
+    spawn("osascript", ["-e", `tell application "Terminal" to do script "${command}"`], {
+      detached: true,
+      stdio: "ignore",
+    });
   } else if (platform() === "win32") {
-    spawn("cmd", ["/c", "start", "cmd", "/k", command], { detached: true, stdio: "ignore" });
+    spawn("cmd", ["/c", "start", "cmd", "/k", "node", cliPath, cmd], { detached: true, stdio: "ignore" });
   } else {
     const term = process.env.TERMINAL || "x-terminal-emulator";
-    spawn(term, ["-e", command], { detached: true, stdio: "ignore" });
+    spawn(term, ["-e", "node", cliPath, cmd], { detached: true, stdio: "ignore" });
   }
 }
 
@@ -199,16 +203,14 @@ function openConfig(): void {
 export function launchTray(): void {
   const icons = ensureIcons();
   const isMac = platform() === "darwin";
-  const isWindows = platform() === "win32";
+  const _isWindows = platform() === "win32";
 
   const status = getDaemonStatus();
   const projectCount = getProjectCount();
 
   // --- Menu Items ---
   const itemStatus = {
-    title: status.running
-      ? `Running (PID: ${status.pid})`
-      : "Stopped",
+    title: status.running ? `Running (PID: ${status.pid})` : "Stopped",
     tooltip: "Daemon status",
     checked: false,
     enabled: false,
@@ -287,9 +289,7 @@ export function launchTray(): void {
     const s = getDaemonStatus();
     const count = getProjectCount();
 
-    itemStatus.title = s.running
-      ? `Running (PID: ${s.pid})`
-      : "Stopped";
+    itemStatus.title = s.running ? `Running (PID: ${s.pid})` : "Stopped";
     itemToggle.title = s.running ? "Stop Daemon" : "Start Daemon";
     itemRestart.enabled = s.running;
     itemProjects.title = `${count} project${count === 1 ? "" : "s"}`;
@@ -356,12 +356,15 @@ export function launchTray(): void {
   // --- Poll daemon status every 5 seconds ---
   setInterval(refreshStatus, 5000);
 
-  systray.ready().then(() => {
-    console.log("vibemote menu bar started");
-  }).catch((err: unknown) => {
-    console.error("Failed to start menu bar:", err);
-    process.exit(1);
-  });
+  systray
+    .ready()
+    .then(() => {
+      console.log("vibemote menu bar started");
+    })
+    .catch((err: unknown) => {
+      console.error("Failed to start menu bar:", err);
+      process.exit(1);
+    });
 
   // Keep process alive
   process.on("SIGINT", () => {

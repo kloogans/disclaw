@@ -1,6 +1,5 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
-import { getConfigDir } from "../config/store.js";
+import { findLogFile } from "../utils/logger.js";
 
 export interface ConnectedBot {
   project: string;
@@ -8,45 +7,56 @@ export interface ConnectedBot {
 }
 
 /**
- * Poll log files for "bot_connected" events.
+ * Poll log files for "handler_ready" or "client_ready" events.
  * Returns the list of projects that connected within the timeout.
  */
 export async function pollForBotConnected(
   projectNames: string[],
   timeoutMs: number = 5000,
 ): Promise<{ connected: ConnectedBot[]; pending: string[] }> {
-  const logDir = join(getConfigDir(), "logs");
   const remaining = new Set(projectNames);
   const connected: ConnectedBot[] = [];
 
   // Record file sizes at start so we only read new lines
   const startOffsets = new Map<string, number>();
+  const logFiles = new Map<string, string>();
   for (const name of projectNames) {
-    const logFile = join(logDir, `${name}.log`);
-    try {
-      startOffsets.set(name, statSync(logFile).size);
-    } catch {
-      startOffsets.set(name, 0);
+    const logFile = findLogFile(name);
+    if (logFile) {
+      logFiles.set(name, logFile);
+      try {
+        startOffsets.set(name, statSync(logFile).size);
+      } catch {
+        startOffsets.set(name, 0);
+      }
     }
   }
 
   const startTime = Date.now();
   while (remaining.size > 0 && Date.now() - startTime < timeoutMs) {
     for (const name of [...remaining]) {
-      const logFile = join(logDir, `${name}.log`);
-      if (!existsSync(logFile)) continue;
+      // Re-resolve log file each iteration in case it was just created
+      let logFile = logFiles.get(name);
+      if (!logFile) {
+        logFile = findLogFile(name) ?? undefined;
+        if (logFile) {
+          logFiles.set(name, logFile);
+          startOffsets.set(name, 0);
+        }
+      }
+      if (!logFile || !existsSync(logFile)) continue;
 
       try {
         const content = readFileSync(logFile, "utf-8");
         const startOffset = startOffsets.get(name) ?? 0;
         const newContent = content.slice(startOffset);
 
-        // Parse pino JSON lines looking for bot_connected events
+        // Parse pino JSON lines looking for handler_ready/client_ready events
         for (const line of newContent.split("\n")) {
           if (!line.trim()) continue;
           try {
             const entry = JSON.parse(line);
-            if (entry.event === "bot_connected" && entry.project === name) {
+            if ((entry.event === "handler_ready" || entry.event === "client_ready") && entry.project === name) {
               connected.push({ project: name, username: entry.username });
               remaining.delete(name);
               break;

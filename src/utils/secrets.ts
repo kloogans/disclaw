@@ -21,5 +21,5 @@ export function scanForSecrets(text: string): string | null {
     }
   }
   if (found.length === 0) return null;
-  return `⚠️ Potential secrets detected: ${found.join(", ")}. Telegram is not E2E encrypted.`;
+  return `⚠️ Potential secrets detected: ${found.join(", ")}. Discord is not E2E encrypted.`;
 }

@@ -2,18 +2,21 @@ import { join } from "node:path";
 import { existsSync, readdirSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { getConfigDir } from "../config/store.js";
+import { findLogFile } from "../utils/logger.js";
 
 export async function logsCommand(name: string | undefined, opts: { lines: string }): Promise<void> {
   const logDir = join(getConfigDir(), "logs");
   const logName = name ?? "daemon";
-  const logFile = join(logDir, `${logName}.log`);
+  const logFile = findLogFile(logName);
 
-  if (!existsSync(logFile)) {
-    console.error(`Log file not found: ${logFile}`);
+  if (!logFile) {
+    console.error(`No log file found for: ${logName}`);
     if (existsSync(logDir)) {
       const files = readdirSync(logDir).filter((f) => f.endsWith(".log"));
       if (files.length > 0) {
-        console.log(`Available logs: ${files.map((f) => f.replace(".log", "")).join(", ")}`);
+        // Deduplicate names (e.g. daemon.1.log and daemon.2.log → daemon)
+        const names = [...new Set(files.map((f) => f.replace(/\.\d+\.log$/, "").replace(/\.log$/, "")))];
+        console.log(`Available logs: ${names.join(", ")}`);
       }
     }
     process.exit(1);
