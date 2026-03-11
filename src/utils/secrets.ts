@@ -8,7 +8,27 @@ const SECRET_PATTERNS = [
   { pattern: /-----BEGIN CERTIFICATE-----/, name: "Certificate" },
   { pattern: /xoxb-[0-9]{10,}-[a-zA-Z0-9]{20,}/, name: "Slack bot token" },
   { pattern: /xoxp-[0-9]{10,}-[a-zA-Z0-9]{20,}/, name: "Slack user token" },
+  { pattern: /sk-ant-api\d{2}-[a-zA-Z0-9_\-]{20,}/, name: "Anthropic API key" },
+  { pattern: /[A-Za-z0-9_-]{24}\.[A-Za-z0-9_-]{6}\.[A-Za-z0-9_-]{27,}/, name: "Discord bot token" },
+  { pattern: /eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/, name: "JWT token" },
+  {
+    pattern: /(?:mongodb(?:\+srv)?|postgres(?:ql)?|mysql):\/\/[^\s"'`]+:[^\s"'`]+@[^\s"'`]+/,
+    name: "Database connection string",
+  },
+  { pattern: /Bearer\s+[A-Za-z0-9_\-.~+/]+=*/i, name: "Bearer token" },
 ];
+
+/**
+ * Replace all detected secrets in text with [REDACTED].
+ */
+export function redactSecrets(text: string): string {
+  let result = text;
+  for (const { pattern } of SECRET_PATTERNS) {
+    const global = new RegExp(pattern.source, pattern.flags.includes("g") ? pattern.flags : pattern.flags + "g");
+    result = result.replace(global, "[REDACTED]");
+  }
+  return result;
+}
 
 /**
  * Scan text for potential secrets. Returns warning message or null.

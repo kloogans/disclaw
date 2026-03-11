@@ -15,7 +15,7 @@ import { formatForDiscord, formatToolUse, escapeMarkdown } from "./formatting.js
 import { chunkMessage } from "../utils/chunker.js";
 import { createThrottle } from "../utils/throttle.js";
 import { MessageBatcher } from "../utils/batcher.js";
-import { scanForSecrets } from "../utils/secrets.js";
+import { scanForSecrets, redactSecrets } from "../utils/secrets.js";
 import type { PermissionResult as SDKPermissionResult } from "@anthropic-ai/claude-agent-sdk";
 import { SessionManager, type TokenUsage } from "../claude/session-manager.js";
 import { downloadImage } from "../media/images.js";
@@ -375,18 +375,19 @@ export class ProjectHandler {
     }
 
     const secretWarning = scanForSecrets(result);
+    const safeResult = secretWarning ? redactSecrets(result) : result;
 
     let lastMessage: Message | undefined;
 
-    if (result.length > this.config.maxResponseChars) {
-      const buffer = Buffer.from(result, "utf-8");
+    if (safeResult.length > this.config.maxResponseChars) {
+      const buffer = Buffer.from(safeResult, "utf-8");
       const attachment = new AttachmentBuilder(buffer, { name: "response.md" });
       lastMessage = await this.channel.send({
-        content: `Response too long for chat (${result.length} chars). Sent as file.`,
+        content: `Response too long for chat (${safeResult.length} chars). Sent as file.`,
         files: [attachment],
       });
     } else {
-      const formatted = formatForDiscord(result);
+      const formatted = formatForDiscord(safeResult);
       const chunks = chunkMessage(formatted);
       for (const chunk of chunks) {
         lastMessage = await this.channel.send(chunk);

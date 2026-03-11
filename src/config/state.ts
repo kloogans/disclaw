@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, existsSync, unlinkSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, unlinkSync, chmodSync } from "node:fs";
 import { join } from "node:path";
 import type { AppState } from "./types.js";
 import { getConfigDir, ensureConfigDir } from "./store.js";
@@ -17,6 +17,7 @@ export function loadState(): AppState {
 export function saveState(state: AppState): void {
   ensureConfigDir();
   writeFileSync(STATE_PATH, JSON.stringify(state, null, 2), "utf-8");
+  chmodSync(STATE_PATH, 0o600);
 }
 
 export function saveSessionId(projectName: string, sessionId: string): void {

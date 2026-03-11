@@ -1,5 +1,6 @@
-import { writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { join, extname } from "node:path";
+import { downloadToFile } from "./download.js";
 
 export interface ImageAttachment {
   url: string;
@@ -27,10 +28,7 @@ export async function downloadImage(attachment: ImageAttachment, projectPath: st
   const filename = `img_${Date.now()}.${ext}`;
   const localPath = join(mediaDir, filename);
 
-  const response = await fetch(attachment.url);
-  if (!response.ok) throw new Error(`Image download failed: ${response.status}`);
-  const buffer = Buffer.from(await response.arrayBuffer());
-  writeFileSync(localPath, buffer);
+  await downloadToFile(attachment.url, localPath);
 
   return localPath;
 }

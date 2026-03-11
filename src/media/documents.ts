@@ -1,5 +1,6 @@
-import { writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
+import { downloadToFile } from "./download.js";
 
 export interface DocumentAttachment {
   url: string;
@@ -18,10 +19,7 @@ export async function downloadDocument(attachment: DocumentAttachment, projectPa
   const filename = `${Date.now()}_${baseName}`;
   const localPath = join(mediaDir, filename);
 
-  const response = await fetch(attachment.url);
-  if (!response.ok) throw new Error(`Document download failed: ${response.status}`);
-  const buffer = Buffer.from(await response.arrayBuffer());
-  writeFileSync(localPath, buffer);
+  await downloadToFile(attachment.url, localPath);
 
   return localPath;
 }
