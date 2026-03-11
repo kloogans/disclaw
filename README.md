@@ -48,7 +48,7 @@ Discord --> discord.js client --> Claude Agent SDK --> Claude Code subprocess
 
 ```bash
 # Install
-npm install -g github:kloogans/disclaw
+npm install -g disclaw
 
 # First-time setup (Discord bot token, server ID, user ID)
 disclaw setup

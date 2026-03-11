@@ -16,7 +16,7 @@ A step-by-step walkthrough. Follow each step in order.
 ## Step 1: Install disclaw
 
 ```bash
-npm install -g github:kloogans/disclaw
+npm install -g disclaw
 ```
 
 Verify it works:
