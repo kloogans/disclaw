@@ -44,7 +44,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   discordGuildId: "",
   authorizedUsers: [],
   defaults: {
-    model: "claude-opus-4-6",
+    model: "claude-sonnet-4-6",
     permissionMode: "default",
     allowedTools: ["Read", "Glob", "Grep", "WebSearch"],
     settingSources: ["user", "project"],
