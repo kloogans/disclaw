@@ -26,8 +26,8 @@ export class UsageTracker {
     return String(tokens);
   }
 
-  /** Per-turn usage footer for Discord. Returns null if no usage data. */
-  getUsageFooter(costUsd: number, usage: TokenUsage): string {
+  /** Per-turn usage footer for Discord. */
+  getUsageFooter(usage: TokenUsage): string {
     const parts: string[] = [
       `${this.formatTokenCount(usage.inputTokens)} in`,
       `${this.formatTokenCount(usage.outputTokens)} out`,
@@ -35,19 +35,16 @@ export class UsageTracker {
     if (usage.cacheReadTokens > 0) {
       parts.push(`${this.formatTokenCount(usage.cacheReadTokens)} cached`);
     }
-    let footer = `\uD83D\uDCCA ${parts.join(" \u00B7 ")} \u00B7 $${costUsd.toFixed(4)}`;
 
-    // Context window warning
     if (this.lastContextWindow > 0) {
       const usedPct = Math.round((usage.inputTokens / this.lastContextWindow) * 100);
       if (usedPct >= 80) {
-        footer += `\n\u26A0\uFE0F Context ${usedPct}% full \u2014 consider /new`;
-      } else if (usedPct >= 50) {
-        footer += ` \u00B7 ctx ${usedPct}%`;
+        return `\u26A0\uFE0F ${parts.join(" \u00B7 ")} \u00B7 **ctx ${usedPct}%** \u2014 consider /new`;
       }
+      parts.push(`ctx ${usedPct}%`);
     }
 
-    return footer;
+    return `\uD83D\uDCCA ${parts.join(" \u00B7 ")}`;
   }
 
   getStatus(projectName: string, projectPath: string, model: string, mode: string, sessionId: string | null): string {

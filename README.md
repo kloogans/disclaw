@@ -22,14 +22,12 @@ Remote Claude Code control via Discord. Run Claude as a daemon and interact with
 - **Thinking preview** - watch Claude's extended reasoning live before the response streams in
 - **Tool progress heartbeats** - see elapsed time during long-running tool operations
 - **Subagent notifications** - get notified when Claude spawns and completes subagents
-- **Token usage tracking** - per-turn token counts (input/output/cached) and cost shown after every response
-- **Context window monitoring** - see context usage percentage, with warnings at 80%+ to suggest starting fresh
+- **Token and context tracking** - per-turn token counts (input/output/cached) and context window usage after every response, with warnings at 80%+
 - **Rate limit warnings** - proactive alerts when approaching or hitting rate limits
 - **Context compaction status** - notification when Claude compacts session history
 - **Prompt suggestions** - tappable button with Claude's suggested follow-up after each response
 - **Typing indicator** - Discord shows "typing..." while Claude is working
 - **Pinned responses** - Claude's last response is automatically pinned for easy reference
-- **Git status notifications** - periodic alerts when your project has uncommitted changes
 - **`/undo` and `/diff`** - revert file changes or view git status from the chat
 
 ---

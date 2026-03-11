@@ -1,20 +1,16 @@
 import { execFileSync } from "node:child_process";
 import path from "node:path";
-import type { TextChannel } from "discord.js";
 import { escapeMarkdown } from "./formatting.js";
 import type pino from "pino";
 
 const GIT_COMMAND_TIMEOUT_MS = 5000;
-const GIT_STATUS_CHECK_INTERVAL_MS = 30 * 60 * 1000;
 
 export class GitHelper {
   private projectPath: string;
   private projectName: string;
   private logger: pino.Logger;
-  private lastGitState: string | null = null;
   private preInteractionGitState: string | null = null;
   private lastChangedFiles: string[] = [];
-  private gitNotifyInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor(projectPath: string, projectName: string, logger: pino.Logger) {
     this.projectPath = projectPath;
@@ -137,54 +133,6 @@ export class GitHelper {
       return parts.join("\n\n");
     } catch (err) {
       return `Error: ${escapeMarkdown(String(err))}`;
-    }
-  }
-
-  startNotifications(channel: TextChannel): void {
-    try {
-      this.lastGitState = this.git(["status", "--porcelain"]);
-    } catch {
-      this.lastGitState = "";
-    }
-
-    this.gitNotifyInterval = setInterval(() => {
-      this.checkStatus(channel);
-    }, GIT_STATUS_CHECK_INTERVAL_MS);
-  }
-
-  stopNotifications(): void {
-    if (this.gitNotifyInterval) {
-      clearInterval(this.gitNotifyInterval);
-      this.gitNotifyInterval = null;
-    }
-  }
-
-  private checkStatus(channel: TextChannel): void {
-    try {
-      const status = this.git(["status", "--porcelain"]);
-
-      if (status === this.lastGitState) return;
-      this.lastGitState = status;
-
-      if (!status) return;
-
-      const lines = status.split("\n");
-      const modified = lines.filter((l) => l.startsWith(" M") || l.startsWith("M ")).length;
-      const added = lines.filter((l) => l.startsWith("??")).length;
-      const deleted = lines.filter((l) => l.startsWith(" D") || l.startsWith("D ")).length;
-
-      const parts: string[] = [];
-      if (modified > 0) parts.push(`${modified} modified`);
-      if (added > 0) parts.push(`${added} untracked`);
-      if (deleted > 0) parts.push(`${deleted} deleted`);
-
-      channel
-        .send(
-          `\uD83D\uDCCB **${escapeMarkdown(this.projectName)}** has uncommitted changes: ${parts.join(", ")}\n\nUse /diff for details.`,
-        )
-        .catch((e) => this.logger.debug(e, "git notification send failed"));
-    } catch {
-      // Git not available or timeout — skip silently
     }
   }
 }

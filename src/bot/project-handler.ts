@@ -112,7 +112,6 @@ export class ProjectHandler {
 
   setChannel(channel: TextChannel): void {
     this.channel = channel;
-    this.git.startNotifications(channel);
     this.logger.info(
       { event: "handler_ready", project: this.project.name, channel: channel.name },
       "Project handler ready",
@@ -404,7 +403,7 @@ export class ProjectHandler {
     }
 
     if (usageData) {
-      const footer = this.usage.getUsageFooter(costUsd, usageData);
+      const footer = this.usage.getUsageFooter(usageData);
       await this.channel.send(footer);
     }
 
@@ -564,7 +563,6 @@ export class ProjectHandler {
     this.batcher.clear();
     this.stream.stopTyping();
     this.stream.stopStreaming();
-    this.git.stopNotifications();
     for (const [id, pending] of this.permissionCallbacks) {
       clearTimeout(pending.timer);
       pending.respond({ behavior: "deny", message: "Bot is shutting down" });
