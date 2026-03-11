@@ -1,4 +1,8 @@
-# vibemote
+<p align="center">
+  <img src="assets/disclaw_logo.png" alt="disclaw mascot" width="200">
+</p>
+
+# disclaw
 
 Remote Claude Code control via Discord. Run Claude as a daemon and interact with your projects from anywhere through Discord channels.
 
@@ -6,33 +10,33 @@ Remote Claude Code control via Discord. Run Claude as a daemon and interact with
 
 ## Features
 
-- **One channel per project** — each project gets its own Discord channel, with a single bot managing them all
-- **Images and documents** — send screenshots, photos, or files for Claude to analyze
-- **Permission approval via buttons** — approve, always-approve, or deny tool usage with Discord buttons
-- **Slash commands** — Discord-native command interface with autocomplete
-- **Model and effort switching** — change models (sonnet, opus, haiku) and effort levels mid-conversation
-- **Auto-start** — install as a systemd service (Linux), macOS LaunchAgent, or Windows scheduled task
-- **Multi-turn conversations** — send multiple messages that get batched intelligently before sending to Claude
-- **Session management** — list past sessions with tappable resume buttons, or hand off to Claude Code CLI
-- **Live response streaming** — see Claude's response as it types, updated every few seconds
-- **Thinking preview** — watch Claude's extended reasoning live before the response streams in
-- **Tool progress heartbeats** — see elapsed time during long-running tool operations
-- **Subagent notifications** — get notified when Claude spawns and completes subagents
-- **Token usage tracking** — per-turn token counts (input/output/cached) and cost shown after every response
-- **Context window monitoring** — see context usage percentage, with warnings at 80%+ to suggest starting fresh
-- **Rate limit warnings** — proactive alerts when approaching or hitting rate limits
-- **Context compaction status** — notification when Claude compacts session history
-- **Prompt suggestions** — tappable button with Claude's suggested follow-up after each response
-- **Typing indicator** — Discord shows "typing..." while Claude is working
-- **Pinned responses** — Claude's last response is automatically pinned for easy reference
-- **Git status notifications** — periodic alerts when your project has uncommitted changes
-- **`/undo` and `/diff`** — revert file changes or view git status from the chat
+- **One channel per project** - each project gets its own Discord channel, with a single bot managing them all
+- **Images and documents** - send screenshots, photos, or files for Claude to analyze
+- **Permission approval via buttons** - approve, always-approve, or deny tool usage with Discord buttons
+- **Slash commands** - Discord-native command interface with autocomplete
+- **Model and effort switching** - change models (sonnet, opus, haiku) and effort levels mid-conversation
+- **Auto-start** - install as a systemd service (Linux), macOS LaunchAgent, or Windows scheduled task
+- **Multi-turn conversations** - send multiple messages that get batched intelligently before sending to Claude
+- **Session management** - list past sessions with tappable resume buttons, or hand off to Claude Code CLI
+- **Live response streaming** - see Claude's response as it types, updated every few seconds
+- **Thinking preview** - watch Claude's extended reasoning live before the response streams in
+- **Tool progress heartbeats** - see elapsed time during long-running tool operations
+- **Subagent notifications** - get notified when Claude spawns and completes subagents
+- **Token usage tracking** - per-turn token counts (input/output/cached) and cost shown after every response
+- **Context window monitoring** - see context usage percentage, with warnings at 80%+ to suggest starting fresh
+- **Rate limit warnings** - proactive alerts when approaching or hitting rate limits
+- **Context compaction status** - notification when Claude compacts session history
+- **Prompt suggestions** - tappable button with Claude's suggested follow-up after each response
+- **Typing indicator** - Discord shows "typing..." while Claude is working
+- **Pinned responses** - Claude's last response is automatically pinned for easy reference
+- **Git status notifications** - periodic alerts when your project has uncommitted changes
+- **`/undo` and `/diff`** - revert file changes or view git status from the chat
 
 ---
 
 ## How It Works
 
-vibemote runs a single daemon process with one [discord.js](https://discord.js.org/) client connected to your Discord server. Each registered project is mapped to a Discord channel. Messages in a project's channel are forwarded to the [Claude Agent SDK](https://github.com/anthropic-ai/claude-agent-sdk), which spawns Claude Code subprocesses scoped to the project directory.
+disclaw runs a single daemon process with one [discord.js](https://discord.js.org/) client connected to your Discord server. Each registered project is mapped to a Discord channel. Messages in a project's channel are forwarded to the [Claude Agent SDK](https://github.com/anthropic-ai/claude-agent-sdk), which spawns Claude Code subprocesses scoped to the project directory.
 
 Images and documents are downloaded to a temporary media directory and passed to Claude as file references, with automatic cleanup after 24 hours.
 
@@ -52,7 +56,7 @@ See [GETTING-STARTED.md](GETTING-STARTED.md) for a complete step-by-step walkthr
 
 ## Configuration
 
-After running `vibemote setup`, the config file lives at `~/.vibemote/config.json`:
+After running `disclaw setup`, the config file lives at `~/.disclaw/config.json`:
 
 ```json
 {
@@ -120,19 +124,19 @@ Any project entry can override `model`, `permissionMode`, and `allowedTools`:
 
 | Command | Description |
 |---|---|
-| `vibemote setup` | First-time setup — configure Discord bot and server |
-| `vibemote add <path>` | Register a project (auto-creates a Discord channel or use existing) |
-| `vibemote start` | Start the daemon |
-| `vibemote stop` | Stop the daemon |
-| `vibemote restart` | Restart the daemon |
-| `vibemote status` | Show daemon status and project info |
-| `vibemote list` | List all registered projects with their settings |
-| `vibemote remove <name>` | Unregister a project |
-| `vibemote token-update` | Update the Discord bot token |
-| `vibemote logs [name]` | Tail logs (daemon by default, or a specific project) |
-| `vibemote doctor` | Health check — verify Node.js, config, auth, daemon |
-| `vibemote install` | Install auto-start (systemd / LaunchAgent / Task Scheduler) |
-| `vibemote uninstall` | Remove auto-start |
+| `disclaw setup` | First-time setup, configures Discord bot and server |
+| `disclaw add <path>` | Register a project (auto-creates a Discord channel or use existing) |
+| `disclaw start` | Start the daemon |
+| `disclaw stop` | Stop the daemon |
+| `disclaw restart` | Restart the daemon |
+| `disclaw status` | Show daemon status and project info |
+| `disclaw list` | List all registered projects with their settings |
+| `disclaw remove <name>` | Unregister a project |
+| `disclaw token-update` | Update the Discord bot token |
+| `disclaw logs [name]` | Tail logs (daemon by default, or a specific project) |
+| `disclaw doctor` | Health check for Node.js, config, auth, and daemon |
+| `disclaw install` | Install auto-start (systemd / LaunchAgent / Task Scheduler) |
+| `disclaw uninstall` | Remove auto-start |
 
 ---
 
@@ -159,10 +163,10 @@ These commands are available in any project channel:
 
 ## Requirements
 
-- **Linux, macOS, or Windows** — auto-start via systemd (Linux), LaunchAgent (macOS), or Task Scheduler (Windows)
-- **Node.js 22+** — required for the runtime
-- **Claude Code** with a Max subscription — the Agent SDK authenticates via your existing Claude Code login (no API key needed)
-- **A Discord server** — you need a server where you can add a bot
+- **Linux, macOS, or Windows** - auto-start via systemd, LaunchAgent, or Task Scheduler
+- **Node.js 22+**
+- **Claude Code** with a Max subscription (the Agent SDK authenticates via your existing Claude Code login, no API key needed)
+- **A Discord server** where you can add a bot
 
 ---
 

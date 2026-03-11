@@ -5,7 +5,7 @@ export async function removeCommand(name: string): Promise<void> {
   const config = loadConfig();
   const exists = config.projects.some((p) => p.name === name);
   if (!exists) {
-    console.error(`Project "${name}" not found. Run: vibemote list`);
+    console.error(`Project "${name}" not found. Run: disclaw list`);
     process.exit(1);
   }
 

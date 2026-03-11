@@ -31,7 +31,7 @@ function getLogDir(): string {
 
 function installMacOS(): void {
   const launchAgentsDir = join(homedir(), "Library", "LaunchAgents");
-  const plistDest = join(launchAgentsDir, "com.vibemote.daemon.plist");
+  const plistDest = join(launchAgentsDir, "com.disclaw.daemon.plist");
 
   if (!existsSync(launchAgentsDir)) {
     mkdirSync(launchAgentsDir, { recursive: true });
@@ -47,7 +47,7 @@ function installMacOS(): void {
 <plist version="1.0">
 <dict>
   <key>Label</key>
-  <string>com.vibemote.daemon</string>
+  <string>com.disclaw.daemon</string>
   <key>ProgramArguments</key>
   <array>
     <string>${nodePath}</string>
@@ -81,7 +81,7 @@ function installMacOS(): void {
   } catch {}
   execSync(`launchctl bootstrap gui/${uid} "${plistDest}"`);
 
-  console.log("LaunchAgent installed. vibemote will auto-start on login.");
+  console.log("LaunchAgent installed. disclaw will auto-start on login.");
   console.log(`  Plist: ${plistDest}`);
 
   // Also install tray LaunchAgent
@@ -89,7 +89,7 @@ function installMacOS(): void {
 }
 
 function installMacOSTray(launchAgentsDir: string, nodePath: string, logDir: string): void {
-  const plistDest = join(launchAgentsDir, "com.vibemote.tray.plist");
+  const plistDest = join(launchAgentsDir, "com.disclaw.tray.plist");
   const trayPath = getTrayPath();
 
   const template = `<?xml version="1.0" encoding="UTF-8"?>
@@ -98,7 +98,7 @@ function installMacOSTray(launchAgentsDir: string, nodePath: string, logDir: str
 <plist version="1.0">
 <dict>
   <key>Label</key>
-  <string>com.vibemote.tray</string>
+  <string>com.disclaw.tray</string>
   <key>ProgramArguments</key>
   <array>
     <string>${nodePath}</string>
@@ -139,7 +139,7 @@ function uninstallMacOS(): void {
   const uid = execSync("id -u", { encoding: "utf-8" }).trim();
   let removed = false;
 
-  const daemonPlist = join(homedir(), "Library", "LaunchAgents", "com.vibemote.daemon.plist");
+  const daemonPlist = join(homedir(), "Library", "LaunchAgents", "com.disclaw.daemon.plist");
   if (existsSync(daemonPlist)) {
     try {
       execSync(`launchctl bootout gui/${uid} "${daemonPlist}"`);
@@ -149,7 +149,7 @@ function uninstallMacOS(): void {
     removed = true;
   }
 
-  const trayPlist = join(homedir(), "Library", "LaunchAgents", "com.vibemote.tray.plist");
+  const trayPlist = join(homedir(), "Library", "LaunchAgents", "com.disclaw.tray.plist");
   if (existsSync(trayPlist)) {
     try {
       execSync(`launchctl bootout gui/${uid} "${trayPlist}"`);
@@ -164,7 +164,7 @@ function uninstallMacOS(): void {
     return;
   }
 
-  console.log("vibemote will no longer auto-start.");
+  console.log("disclaw will no longer auto-start.");
 }
 
 // --- Linux systemd ---
@@ -175,7 +175,7 @@ function getSystemdDir(): string {
 
 function installLinux(): void {
   const systemdDir = getSystemdDir();
-  const serviceDest = join(systemdDir, "vibemote.service");
+  const serviceDest = join(systemdDir, "disclaw.service");
 
   if (!existsSync(systemdDir)) {
     mkdirSync(systemdDir, { recursive: true });
@@ -186,7 +186,7 @@ function installLinux(): void {
   const logDir = getLogDir();
 
   const template = `[Unit]
-Description=vibemote daemon
+Description=disclaw daemon
 After=network-online.target
 Wants=network-online.target
 
@@ -208,20 +208,20 @@ WantedBy=default.target
   writeFileSync(serviceDest, template, "utf-8");
 
   execSync("systemctl --user daemon-reload");
-  execSync("systemctl --user enable vibemote.service");
-  execSync("systemctl --user start vibemote.service");
+  execSync("systemctl --user enable disclaw.service");
+  execSync("systemctl --user start disclaw.service");
 
   // Enable lingering so the service runs without an active login session
   try {
     execSync("loginctl enable-linger");
   } catch {}
 
-  console.log("systemd service installed. vibemote will auto-start on login.");
+  console.log("systemd service installed. disclaw will auto-start on login.");
   console.log(`  Service: ${serviceDest}`);
 }
 
 function uninstallLinux(): void {
-  const serviceDest = join(getSystemdDir(), "vibemote.service");
+  const serviceDest = join(getSystemdDir(), "disclaw.service");
 
   if (!existsSync(serviceDest)) {
     console.log("systemd service not installed.");
@@ -229,16 +229,16 @@ function uninstallLinux(): void {
   }
 
   try {
-    execSync("systemctl --user stop vibemote.service", { stdio: "ignore" });
+    execSync("systemctl --user stop disclaw.service", { stdio: "ignore" });
   } catch {}
   try {
-    execSync("systemctl --user disable vibemote.service", { stdio: "ignore" });
+    execSync("systemctl --user disable disclaw.service", { stdio: "ignore" });
   } catch {}
 
   unlinkSync(serviceDest);
   execSync("systemctl --user daemon-reload");
 
-  console.log("systemd service removed. vibemote will no longer auto-start.");
+  console.log("systemd service removed. disclaw will no longer auto-start.");
 }
 
 // --- Windows Task Scheduler ---
@@ -248,7 +248,7 @@ function installWindows(): void {
   const daemonPath = getDaemonPath();
   getLogDir(); // ensure log dir exists
 
-  const taskName = "vibemote";
+  const taskName = "disclaw";
 
   // Remove existing task if present
   try {
@@ -263,16 +263,16 @@ function installWindows(): void {
     execSync(`schtasks /Run /TN "${taskName}"`, { stdio: "ignore" });
   } catch {}
 
-  console.log("Scheduled task installed. vibemote will auto-start on login.");
+  console.log("Scheduled task installed. disclaw will auto-start on login.");
   console.log(`  Task: ${taskName}`);
 }
 
 function uninstallWindows(): void {
-  const taskName = "vibemote";
+  const taskName = "disclaw";
 
   try {
     execSync(`schtasks /Delete /TN "${taskName}" /F`);
-    console.log("Scheduled task removed. vibemote will no longer auto-start.");
+    console.log("Scheduled task removed. disclaw will no longer auto-start.");
   } catch {
     console.log("Scheduled task not found.");
   }

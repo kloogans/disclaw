@@ -11,7 +11,7 @@ export interface DocumentAttachment {
  * Returns the local file path.
  */
 export async function downloadDocument(attachment: DocumentAttachment, projectPath: string): Promise<string> {
-  const mediaDir = join(projectPath, ".vibemote", "media");
+  const mediaDir = join(projectPath, ".disclaw", "media");
   if (!existsSync(mediaDir)) mkdirSync(mediaDir, { recursive: true });
 
   const baseName = (attachment.name ?? "file").replace(/[/\\]/g, "_");

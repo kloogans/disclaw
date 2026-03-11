@@ -1,4 +1,4 @@
-# Getting Started with vibemote
+# Getting Started with disclaw
 
 A step-by-step walkthrough. Follow each step in order.
 
@@ -13,16 +13,16 @@ A step-by-step walkthrough. Follow each step in order.
 
 ---
 
-## Step 1: Install vibemote
+## Step 1: Install disclaw
 
 ```bash
-npm install -g github:yourusername/vibemote
+npm install -g github:kloogans/disclaw
 ```
 
 Verify it works:
 
 ```bash
-vibemote --version
+disclaw --version
 ```
 
 > **Building from source?** Clone the repo, run `npm install && npm run build && npm link`.
@@ -32,20 +32,20 @@ vibemote --version
 ## Step 2: Run setup
 
 ```bash
-vibemote setup
+disclaw setup
 ```
 
 This checks prerequisites (Node.js, Claude Code auth), then walks you through:
 
-1. **Discord bot token** — create a bot in the [Discord Developer Portal](https://discord.com/developers/applications):
+1. **Discord bot token** - create a bot in the [Discord Developer Portal](https://discord.com/developers/applications):
    - New Application → Bot tab → Reset Token → copy it
    - Enable **Message Content Intent** under Privileged Gateway Intents
    - OAuth2 → URL Generator → select "bot" scope → select permissions (Send Messages, Manage Messages, Embed Links, Attach Files, Read Message History, Use Slash Commands, Manage Channels)
    - Open the generated URL to invite the bot to your server
 
-2. **Server (guild) ID** — enable Developer Mode (User Settings → Advanced), right-click your server name → Copy Server ID
+2. **Server (guild) ID** - enable Developer Mode (User Settings → Advanced), right-click your server name → Copy Server ID
 
-3. **Your Discord user ID** — right-click your profile → Copy User ID
+3. **Your Discord user ID** - right-click your profile → Copy User ID
 
 If any prerequisites fail, setup tells you exactly what to install.
 
@@ -54,19 +54,19 @@ If any prerequisites fail, setup tells you exactly what to install.
 ## Step 3: Add a project
 
 ```bash
-vibemote add ~/path/to/your/project
+disclaw add ~/path/to/your/project
 ```
 
 This asks for:
 
-- **Project name** — press Enter to use the directory name
-- **Channel setup** — choose to auto-create a new channel (recommended) or enter an existing channel ID
+- **Project name** - press Enter to use the directory name
+- **Channel setup** - choose to auto-create a new channel (recommended) or enter an existing channel ID
 
 The daemon starts automatically and confirms the bot is connected to Discord.
 
 ### Adding more projects
 
-Repeat this step for each project. Each project gets its own channel. If the daemon is already running, new projects are added via hot-reload — no restart needed.
+Repeat this step for each project. Each project gets its own channel. If the daemon is already running, new projects are added via hot-reload, no restart needed.
 
 ---
 
@@ -77,7 +77,7 @@ Repeat this step for each project. Each project gets its own channel. If the dae
 3. Send a message like: "What does this project do?"
 4. You'll see "Working..." then Claude's response
 
-**That's it — you're up and running!**
+**That's it, you're up and running!**
 
 ---
 
@@ -109,10 +109,10 @@ Send a file. Claude can read and process it.
 
 ### Live feedback while Claude works
 
-- **Thinking preview** — Claude's extended reasoning shown live with a brain icon
-- **Streaming text** — response text appears as it's generated
-- **Tool progress** — elapsed time shown during long-running operations
-- **Subagent status** — notifications when Claude spawns and completes subagents
+- **Thinking preview** - Claude's extended reasoning shown live with a brain icon
+- **Streaming text** - response text appears as it's generated
+- **Tool progress** - elapsed time shown during long-running operations
+- **Subagent status** - notifications when Claude spawns and completes subagents
 
 After each response, a usage footer shows tokens used and cost:
 ```
@@ -122,24 +122,24 @@ After each response, a usage footer shows tokens used and cost:
 ### Permission approvals
 When Claude wants to edit files, run commands, etc., you get buttons:
 
-- **Allow** — approve once
-- **Always** — approve this tool for the rest of the session
-- **Deny** — reject
+- **Allow** - approve once
+- **Always** - approve this tool for the rest of the session
+- **Deny** - reject
 
 ---
 
 ## Optional: Auto-start on login
 
-So you don't have to manually run `vibemote start` every time:
+So you don't have to manually run `disclaw start` every time:
 
 ```bash
-vibemote install
+disclaw install
 ```
 
 To remove auto-start:
 
 ```bash
-vibemote uninstall
+disclaw uninstall
 ```
 
 ---
@@ -147,19 +147,19 @@ vibemote uninstall
 ## CLI reference
 
 ```bash
-vibemote setup           # First-time setup
-vibemote add <path>      # Register a project with a channel
-vibemote remove <name>   # Remove a project
-vibemote list            # See all your projects
-vibemote status          # Daemon and bot status
-vibemote start           # Start the daemon
-vibemote stop            # Stop the daemon
-vibemote restart         # Restart the daemon
-vibemote logs [name]     # Tail logs (daemon or specific project)
-vibemote doctor          # Health check
-vibemote token-update    # Update the Discord bot token
-vibemote install         # Auto-start on login
-vibemote uninstall       # Remove auto-start
+disclaw setup           # First-time setup
+disclaw add <path>      # Register a project with a channel
+disclaw remove <name>   # Remove a project
+disclaw list            # See all your projects
+disclaw status          # Daemon and bot status
+disclaw start           # Start the daemon
+disclaw stop            # Stop the daemon
+disclaw restart         # Restart the daemon
+disclaw logs [name]     # Tail logs (daemon or specific project)
+disclaw doctor          # Health check
+disclaw token-update    # Update the Discord bot token
+disclaw install         # Auto-start on login
+disclaw uninstall       # Remove auto-start
 ```
 
 ---
@@ -167,19 +167,19 @@ vibemote uninstall       # Remove auto-start
 ## Troubleshooting
 
 **Bot doesn't respond?**
-- Run `vibemote status` — check if daemon is running and bot token is valid
-- Run `vibemote logs <project-name>` — look for errors
+- Run `disclaw status` to check if the daemon is running and the bot token is valid.
+- Run `disclaw logs <project-name>` and look for errors.
 - Make sure **Message Content Intent** is enabled in the Discord Developer Portal
-- Verify your Discord user ID: `vibemote doctor`
+- Verify your Discord user ID: `disclaw doctor`
 
 **Slash commands not showing up?**
-- Guild-scoped commands should appear instantly. Try restarting the daemon: `vibemote restart`
+- Guild-scoped commands should appear instantly. Try restarting the daemon: `disclaw restart`
 - Make sure the bot has "Use Slash Commands" permission in your server
 
 **Need to update the bot token?**
 ```bash
-vibemote token-update
+disclaw token-update
 ```
 
 **Want to change other settings?**
-Edit `~/.vibemote/config.json` directly, then `vibemote restart`.
+Edit `~/.disclaw/config.json` directly, then `disclaw restart`.

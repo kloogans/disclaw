@@ -5,18 +5,18 @@ import { spawnDaemon } from "./spawn-daemon.js";
 
 export async function startCommand(): Promise<void> {
   if (!configExists()) {
-    console.error("Run `vibemote setup` first.");
+    console.error("Run `disclaw setup` first.");
     process.exit(1);
   }
 
   const config = loadConfig();
   if (config.projects.length === 0) {
-    console.error("No projects registered. Run: vibemote add <path>");
+    console.error("No projects registered. Run: disclaw add <path>");
     process.exit(1);
   }
 
   if (isDaemonRunning()) {
-    console.log(`Daemon already running (PID: ${readPidFile()}). Use 'vibemote restart' to restart.`);
+    console.log(`Daemon already running (PID: ${readPidFile()}). Use 'disclaw restart' to restart.`);
     return;
   }
 
@@ -38,7 +38,7 @@ export async function startCommand(): Promise<void> {
     console.log(`  ✓ ${bot.project}${username} connected`);
   }
   for (const name of pending) {
-    console.log(`  ⚠ ${name} — not yet connected (check: vibemote logs ${name})`);
+    console.log(`  ⚠ ${name} — not yet connected (check: disclaw logs ${name})`);
   }
 
   const total = config.projects.length;

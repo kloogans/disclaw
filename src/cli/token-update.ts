@@ -8,7 +8,7 @@ const MAX_TOKEN_ATTEMPTS = 3;
 
 export async function tokenUpdateCommand(): Promise<void> {
   if (!configExists()) {
-    console.error("Run `vibemote setup` first.");
+    console.error("Run `disclaw setup` first.");
     process.exit(1);
   }
 

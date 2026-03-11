@@ -4,7 +4,7 @@ import { homedir } from "node:os";
 import type { AppConfig, ProjectConfig } from "./types.js";
 import { DEFAULT_CONFIG } from "./types.js";
 
-const CONFIG_DIR = join(homedir(), ".vibemote");
+const CONFIG_DIR = join(homedir(), ".disclaw");
 const CONFIG_PATH = join(CONFIG_DIR, "config.json");
 
 export function ensureConfigDir(): void {
@@ -30,7 +30,7 @@ export function loadConfig(): AppConfig {
       defaults: { ...DEFAULT_CONFIG.defaults, ...parsed.defaults },
     };
   } catch {
-    throw new Error(`Config file is corrupted (${CONFIG_PATH}). Fix the JSON or delete it and run: vibemote setup`);
+    throw new Error(`Config file is corrupted (${CONFIG_PATH}). Fix the JSON or delete it and run: disclaw setup`);
   }
 }
 

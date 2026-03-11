@@ -71,7 +71,7 @@ export class DiscordBot {
           const handler = this.handlers.get(interaction.channelId);
           if (!handler) {
             await interaction.reply({
-              content: "This channel is not linked to a Vibemote project.",
+              content: "This channel is not linked to a Disclaw project.",
               ephemeral: true,
             });
             return;

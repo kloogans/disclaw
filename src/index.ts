@@ -13,7 +13,7 @@ import { doctorCommand } from "./cli/doctor.js";
 
 const program = new Command();
 
-program.name("vibemote").description("Remote Claude Code control via Discord").version("0.1.0");
+program.name("disclaw").description("Remote Claude Code control via Discord").version("0.1.0");
 
 program.command("setup").description("First-time setup — configure Discord bot and server").action(setupCommand);
 
@@ -37,7 +37,7 @@ program
     const { loadConfig } = await import("./config/store.js");
     const config = loadConfig();
     if (config.projects.length === 0) {
-      console.log("No projects registered. Run: vibemote add <path>");
+      console.log("No projects registered. Run: disclaw add <path>");
       return;
     }
     console.log("\nRegistered projects:\n");
@@ -60,14 +60,14 @@ program
     const { validateDiscordToken } = await import("./cli/checks.js");
 
     if (!configExists()) {
-      console.log("Not configured. Run: vibemote setup");
+      console.log("Not configured. Run: disclaw setup");
       return;
     }
 
     if (isDaemonRunning()) {
       console.log(`\nDaemon running (PID: ${readPidFile()})\n`);
     } else {
-      console.log("\nDaemon not running. Run: vibemote start\n");
+      console.log("\nDaemon not running. Run: disclaw start\n");
     }
 
     const config = loadConfig();
@@ -85,7 +85,7 @@ program
     }
 
     if (config.projects.length === 0) {
-      console.log("\nNo projects registered. Run: vibemote add <path>");
+      console.log("\nNo projects registered. Run: disclaw add <path>");
       return;
     }
 

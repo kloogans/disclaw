@@ -10,7 +10,7 @@ export async function doctorCommand(): Promise<void> {
     if (!pass) ok = false;
   };
 
-  console.log("\nvibemote doctor\n");
+  console.log("\ndisclaw doctor\n");
 
   // Prerequisites (from shared checks)
   const nodeCheck = checkNodeVersion();
@@ -20,7 +20,7 @@ export async function doctorCommand(): Promise<void> {
   check(claudeCheck.label, claudeCheck.pass, claudeCheck.detail);
 
   // Config exists
-  check("Config file exists", configExists(), "~/.vibemote/config.json");
+  check("Config file exists", configExists(), "~/.disclaw/config.json");
 
   if (configExists()) {
     const config = loadConfig();

@@ -4,7 +4,7 @@
 <plist version="1.0">
 <dict>
   <key>Label</key>
-  <string>com.vibemote.daemon</string>
+  <string>com.disclaw.daemon</string>
   <key>ProgramArguments</key>
   <array>
     <string>{{NODE_PATH}}</string>

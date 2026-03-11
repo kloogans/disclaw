@@ -7,7 +7,7 @@ import { runAllPrerequisites, printCheckResults, validateDiscordToken } from "./
 const MAX_TOKEN_ATTEMPTS = 3;
 
 export async function setupCommand(): Promise<void> {
-  console.log("\n=== vibemote Setup ===\n");
+  console.log("\n=== Disclaw Setup ===\n");
 
   // Prerequisite checks — all must pass before prompts
   console.log("Checking prerequisites...");
@@ -35,7 +35,7 @@ export async function setupCommand(): Promise<void> {
     // Step 1: Discord Bot Token
     console.log("Step 1: Discord Bot Setup");
     console.log("  1. Go to https://discord.com/developers/applications");
-    console.log('  2. Click "New Application" → name it "Vibemote"');
+    console.log('  2. Click "New Application" → name it "Disclaw"');
     console.log('  3. Go to Bot tab → click "Reset Token" → copy the token');
     console.log('  4. Enable "Message Content Intent" under Privileged Gateway Intents');
     console.log('  5. Go to OAuth2 → URL Generator → select "bot" scope');
@@ -98,8 +98,8 @@ export async function setupCommand(): Promise<void> {
     };
 
     saveConfig(config);
-    console.log("\n✅ Setup complete. Config saved to ~/.vibemote/");
-    console.log("\nNext: vibemote add <path-to-project>");
+    console.log("\n✅ Setup complete. Config saved to ~/.disclaw/");
+    console.log("\nNext: disclaw add <path-to-project>");
   } finally {
     rl.close();
   }

@@ -1,10 +1,10 @@
 {
-  "name": "vibemote",
+  "name": "disclaw",
   "version": "0.1.0",
   "description": "Remote Claude Code control via Discord",
   "type": "module",
   "bin": {
-    "vibemote": "./dist/index.js"
+    "disclaw": "./dist/index.js"
   },
   "files": [
     "src",
@@ -30,7 +30,23 @@
     "node": ">=22"
   },
   "license": "MIT",
-  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kloogans/disclaw.git"
+  },
+  "homepage": "https://github.com/kloogans/disclaw",
+  "bugs": {
+    "url": "https://github.com/kloogans/disclaw/issues"
+  },
+  "keywords": [
+    "claude",
+    "discord",
+    "claude-code",
+    "agent-sdk",
+    "daemon",
+    "remote",
+    "cli"
+  ],
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.71",
     "commander": "^14.0.3",

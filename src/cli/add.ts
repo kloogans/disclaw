@@ -10,7 +10,7 @@ import type { ProjectConfig } from "../config/types.js";
 
 export async function addCommand(pathArg: string): Promise<void> {
   if (!configExists()) {
-    console.error("Run `vibemote setup` first.");
+    console.error("Run `disclaw setup` first.");
     process.exit(1);
   }
 
@@ -36,7 +36,7 @@ export async function addCommand(pathArg: string): Promise<void> {
   const config = loadConfig();
 
   if (!config.discordBotToken) {
-    console.error("No Discord bot token configured. Run `vibemote setup` first.");
+    console.error("No Discord bot token configured. Run `disclaw setup` first.");
     process.exit(1);
   }
 
@@ -48,7 +48,7 @@ export async function addCommand(pathArg: string): Promise<void> {
 
     // Check for duplicate project name
     if (config.projects.some((p) => p.name === name)) {
-      console.error(`\nProject "${name}" already exists. Use a different name or run: vibemote remove ${name}`);
+      console.error(`\nProject "${name}" already exists. Use a different name or run: disclaw remove ${name}`);
       return;
     }
 
@@ -63,7 +63,7 @@ export async function addCommand(pathArg: string): Promise<void> {
 
     if (choice === "1") {
       // Auto-create channel via Discord REST API
-      const channelName = `vibemote-${name}`
+      const channelName = `disclaw-${name}`
         .toLowerCase()
         .replace(/[^a-z0-9-]/g, "-")
         .slice(0, 100);
@@ -77,7 +77,7 @@ export async function addCommand(pathArg: string): Promise<void> {
           body: JSON.stringify({
             name: channelName,
             type: 0, // GUILD_TEXT
-            topic: `Vibemote: ${name} — ${realPath}`,
+            topic: `Disclaw: ${name} — ${realPath}`,
           }),
         });
 
@@ -145,7 +145,7 @@ export async function addCommand(pathArg: string): Promise<void> {
       console.log("✓ connected");
     } else {
       console.log("⚠ not yet connected");
-      console.log(`  Check: vibemote logs ${name}`);
+      console.log(`  Check: disclaw logs ${name}`);
     }
 
     console.log(`\nOpen Discord and send a message in the project channel.`);

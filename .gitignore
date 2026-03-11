@@ -3,4 +3,8 @@ dist/
 *.log
 *.tgz
 .env
-.vibemote/
+.env.*
+.disclaw/
+.DS_Store
+docs/plans/
+tasks/

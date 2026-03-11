@@ -145,7 +145,7 @@ async function main(): Promise<void> {
   const config = loadConfig();
 
   if (!config.discordBotToken) {
-    logger.fatal("No Discord bot token configured. Run 'vibemote setup' first.");
+    logger.fatal("No Discord bot token configured. Run 'disclaw setup' first.");
     removePidFile();
     process.exit(1);
   }

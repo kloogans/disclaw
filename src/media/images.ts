@@ -12,7 +12,7 @@ export interface ImageAttachment {
  * Returns the local file path.
  */
 export async function downloadImage(attachment: ImageAttachment, projectPath: string): Promise<string> {
-  const mediaDir = join(projectPath, ".vibemote", "media");
+  const mediaDir = join(projectPath, ".disclaw", "media");
   if (!existsSync(mediaDir)) mkdirSync(mediaDir, { recursive: true });
 
   let ext = "jpg";
