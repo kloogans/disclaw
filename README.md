@@ -152,6 +152,7 @@ These commands are available in any project channel:
 | `/simplify` | Review and simplify recently changed code |
 | `/review` | Review recent changes for bugs and issues |
 | `/commit [message]` | Commit current changes with a generated or custom message |
+| `/skill <name> [args]` | Run any Claude Code skill (e.g. `/skill frontend-design build a hero section`) |
 | `/undo` | Revert last file changes (uncommitted modifications) |
 | `/diff` | Show uncommitted changes and recent commits |
 | `/sessions` | List past sessions with resume buttons |

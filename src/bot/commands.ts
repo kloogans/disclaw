@@ -63,6 +63,15 @@ export function buildSlashCommands(): SlashCommandBuilder[] {
       .addStringOption((opt) =>
         opt.setName("message").setDescription("Optional commit message or instructions").setRequired(false),
       ) as SlashCommandBuilder,
+    new SlashCommandBuilder()
+      .setName("skill")
+      .setDescription("Run a Claude Code skill")
+      .addStringOption((opt) =>
+        opt.setName("name").setDescription("Skill name (e.g. frontend-design)").setRequired(true),
+      )
+      .addStringOption((opt) =>
+        opt.setName("args").setDescription("Arguments to pass to the skill").setRequired(false),
+      ) as SlashCommandBuilder,
     new SlashCommandBuilder().setName("help").setDescription("Show all commands"),
   ];
 }
@@ -89,6 +98,7 @@ export async function handleSlashCommand(
           "/simplify - Review and simplify recently changed code\n" +
           "/review - Review recent changes for bugs and issues\n" +
           "/commit `[message]` - Commit current changes\n" +
+          "/skill `<name>` `[args]` - Run a Claude Code skill\n" +
           "/undo - Revert last file changes\n" +
           "/diff - Show recent git changes\n" +
           "/sessions - List past sessions\n" +
@@ -231,6 +241,15 @@ export async function handleSlashCommand(
         : "Review the current git diff and create a commit with a clear, concise message.";
       callbacks.onSendPrompt(prompt);
       await interaction.reply("\uD83D\uDCDD Committing changes...");
+      return true;
+    }
+
+    case "skill": {
+      const name = interaction.options.getString("name", true);
+      const args = interaction.options.getString("args");
+      const prompt = args ? `/${name} ${args}` : `/${name}`;
+      callbacks.onSendPrompt(prompt);
+      await interaction.reply(`\uD83D\uDD27 Running /${escapeMarkdown(name)}...`);
       return true;
     }
 
