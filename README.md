@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/disclaw_logo_full.png" alt="disclaw" width="400">
+  <img src="assets/disclaw_logo_full_circle.png" alt="disclaw" width="400">
 </p>
 
 Remote Claude Code control via Discord. Run Claude as a daemon and interact with your projects from anywhere through Discord channels.
