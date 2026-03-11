@@ -46,7 +46,20 @@ Discord --> discord.js client --> Claude Agent SDK --> Claude Code subprocess
 
 ## Quick Start
 
-See [GETTING-STARTED.md](GETTING-STARTED.md) for a complete step-by-step walkthrough.
+```bash
+# Install
+npm install -g github:kloogans/disclaw
+
+# First-time setup (Discord bot token, server ID, user ID)
+disclaw setup
+
+# Add a project (creates a Discord channel automatically)
+disclaw add ~/path/to/your/project
+```
+
+The daemon starts after adding your first project. Open Discord, go to the project channel, and send a message.
+
+See [GETTING-STARTED.md](GETTING-STARTED.md) for a detailed walkthrough including Discord bot creation.
 
 ---
 
@@ -60,7 +73,7 @@ After running `disclaw setup`, the config file lives at `~/.disclaw/config.json`
   "discordGuildId": "123456789012345678",
   "authorizedUsers": ["123456789012345678"],
   "defaults": {
-    "model": "claude-opus-4-6",
+    "model": "claude-sonnet-4-6",
     "effort": "high",
     "thinking": "adaptive",
     "permissionMode": "default",
@@ -88,7 +101,7 @@ After running `disclaw setup`, the config file lives at `~/.disclaw/config.json`
 | `discordBotToken` | `""` | Discord bot token (from Developer Portal) |
 | `discordGuildId` | `""` | Discord server (guild) ID |
 | `authorizedUsers` | `[]` | Array of Discord user ID strings allowed to interact with the bot |
-| `defaults.model` | `"claude-opus-4-6"` | Default Claude model (`claude-opus-4-6`, `sonnet`, `haiku`, or any model ID) |
+| `defaults.model` | `"claude-sonnet-4-6"` | Default Claude model (`sonnet`, `opus`, `haiku`, or any model ID) |
 | `defaults.effort` | (not set) | Reasoning effort level: `low`, `medium`, `high`, or `max` |
 | `defaults.thinking` | (not set) | Thinking mode: `adaptive`, `enabled`, or `disabled` |
 | `defaults.permissionMode` | `"default"` | How tool permissions are handled: `default`, `acceptEdits`, `bypassPermissions`, `plan`, `auto`, or `dontAsk` |
