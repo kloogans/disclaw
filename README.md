@@ -149,6 +149,9 @@ These commands are available in any project channel:
 | `/cancel` | Interrupt the current operation |
 | `/model <name>` | Switch model (`sonnet`, `opus`, `haiku`) |
 | `/mode <mode>` | Switch permission mode (`auto`, `plan`, `default`) |
+| `/simplify` | Review and simplify recently changed code |
+| `/review` | Review recent changes for bugs and issues |
+| `/commit [message]` | Commit current changes with a generated or custom message |
 | `/undo` | Revert last file changes (uncommitted modifications) |
 | `/diff` | Show uncommitted changes and recent commits |
 | `/sessions` | List past sessions with resume buttons |

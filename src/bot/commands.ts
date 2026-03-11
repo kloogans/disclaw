@@ -21,6 +21,7 @@ export interface CommandCallbacks {
   onDiff: () => Promise<string>;
   onStatus: () => string;
   onCost: () => string;
+  onSendPrompt: (prompt: string) => void;
 }
 
 /**
@@ -54,6 +55,14 @@ export function buildSlashCommands(): SlashCommandBuilder[] {
     new SlashCommandBuilder().setName("handoff").setDescription("Get CLI command to continue in Claude Code"),
     new SlashCommandBuilder().setName("status").setDescription("Project and session info"),
     new SlashCommandBuilder().setName("cost").setDescription("Session cost"),
+    new SlashCommandBuilder().setName("simplify").setDescription("Review and simplify recently changed code"),
+    new SlashCommandBuilder().setName("review").setDescription("Review recent changes for bugs and issues"),
+    new SlashCommandBuilder()
+      .setName("commit")
+      .setDescription("Commit current changes")
+      .addStringOption((opt) =>
+        opt.setName("message").setDescription("Optional commit message or instructions").setRequired(false),
+      ) as SlashCommandBuilder,
     new SlashCommandBuilder().setName("help").setDescription("Show all commands"),
   ];
 }
@@ -73,18 +82,21 @@ export async function handleSlashCommand(
     case "help": {
       await interaction.reply(
         "**Commands:**\n\n" +
-          "/new \u2014 Start a fresh session\n" +
-          "/model `<name>` \u2014 Switch model (sonnet, opus, haiku)\n" +
-          "/mode `<mode>` \u2014 Switch permission mode (auto, plan, default)\n" +
-          "/cancel \u2014 Interrupt current operation\n" +
-          "/undo \u2014 Revert last file changes\n" +
-          "/diff \u2014 Show recent git changes\n" +
-          "/sessions \u2014 List past sessions\n" +
-          "/resume `<id>` \u2014 Resume a session\n" +
-          "/handoff \u2014 Get CLI command to continue in Claude Code\n" +
-          "/status \u2014 Show project & session info\n" +
-          "/cost \u2014 Show session cost\n" +
-          "/help \u2014 This message",
+          "/new - Start a fresh session\n" +
+          "/model `<name>` - Switch model (sonnet, opus, haiku)\n" +
+          "/mode `<mode>` - Switch permission mode (auto, plan, default)\n" +
+          "/cancel - Interrupt current operation\n" +
+          "/simplify - Review and simplify recently changed code\n" +
+          "/review - Review recent changes for bugs and issues\n" +
+          "/commit `[message]` - Commit current changes\n" +
+          "/undo - Revert last file changes\n" +
+          "/diff - Show recent git changes\n" +
+          "/sessions - List past sessions\n" +
+          "/resume `<id>` - Resume a session\n" +
+          "/handoff - Get CLI command to continue in Claude Code\n" +
+          "/status - Show project & session info\n" +
+          "/cost - Show session cost\n" +
+          "/help - This message",
       );
       return true;
     }
@@ -193,6 +205,32 @@ export async function handleSlashCommand(
 
     case "cost": {
       await interaction.reply(callbacks.onCost());
+      return true;
+    }
+
+    case "simplify": {
+      callbacks.onSendPrompt(
+        "Review the code you just changed. Look for opportunities to simplify, reuse existing patterns, and improve clarity. Fix any issues you find.",
+      );
+      await interaction.reply("\uD83E\uDDF9 Reviewing code for simplification...");
+      return true;
+    }
+
+    case "review": {
+      callbacks.onSendPrompt(
+        "Review the recent changes for bugs, logic errors, security vulnerabilities, and code quality issues. Report what you find.",
+      );
+      await interaction.reply("\uD83D\uDD0D Reviewing recent changes...");
+      return true;
+    }
+
+    case "commit": {
+      const message = interaction.options.getString("message");
+      const prompt = message
+        ? `Review the current git diff and create a commit. Instructions: ${message}`
+        : "Review the current git diff and create a commit with a clear, concise message.";
+      callbacks.onSendPrompt(prompt);
+      await interaction.reply("\uD83D\uDCDD Committing changes...");
       return true;
     }
 

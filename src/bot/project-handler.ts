@@ -133,6 +133,7 @@ export class ProjectHandler {
       onDiff: () => this.git.diff(),
       onStatus: () => this.getStatus(),
       onCost: () => this.usage.getCost(),
+      onSendPrompt: (prompt) => this.batcher.add(prompt),
     };
   }
 
