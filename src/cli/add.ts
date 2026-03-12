@@ -162,6 +162,12 @@ export async function addCommand(pathArg: string): Promise<void> {
     }
 
     console.log(`\n  Open Discord and send a message in the project channel.`);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ABORT_ERR") {
+      console.log("\n");
+      process.exit(0);
+    }
+    throw err;
   } finally {
     rl.close();
   }

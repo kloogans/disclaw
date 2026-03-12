@@ -117,6 +117,12 @@ export async function setupCommand(): Promise<void> {
     saveConfig(config);
     done("Setup complete. Config saved to ~/.disclaw/");
     next("disclaw add <path-to-project>");
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ABORT_ERR") {
+      console.log("\n");
+      process.exit(0);
+    }
+    throw err;
   } finally {
     rl.close();
   }

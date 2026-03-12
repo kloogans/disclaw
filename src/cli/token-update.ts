@@ -73,6 +73,12 @@ export async function tokenUpdateCommand(): Promise<void> {
       await new Promise((r) => setTimeout(r, 3000));
       spinner.stop(`${c.green}✓${c.reset} Daemon notified`);
     }
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ABORT_ERR") {
+      console.log("\n");
+      process.exit(0);
+    }
+    throw err;
   } finally {
     rl.close();
   }
