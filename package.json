@@ -4,7 +4,7 @@
   "description": "Remote Claude Code control via Discord",
   "type": "module",
   "bin": {
-    "disclaw": "./dist/index.js"
+    "disclaw": "dist/index.js"
   },
   "files": [
     "dist",
