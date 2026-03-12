@@ -1,16 +1,20 @@
 import { configExists, loadConfig } from "../config/store.js";
 import { isDaemonRunning } from "../config/state.js";
 import { checkNodeVersion, checkClaudeAuth, validateDiscordToken } from "./checks.js";
+import { banner, success, fail, c, Spinner } from "./ui.js";
 
 export async function doctorCommand(): Promise<void> {
   let ok = true;
   const check = (label: string, pass: boolean, detail?: string) => {
-    const icon = pass ? "✓" : "✗";
-    console.log(`  ${icon} ${label}${detail ? ` — ${detail}` : ""}`);
-    if (!pass) ok = false;
+    if (pass) {
+      success(`${label}${detail ? ` ${c.dim}— ${detail}${c.reset}` : ""}`);
+    } else {
+      fail(`${label}${detail ? ` ${c.dim}— ${detail}${c.reset}` : ""}`);
+      ok = false;
+    }
   };
 
-  console.log("\ndisclaw doctor\n");
+  banner("doctor");
 
   // Prerequisites (from shared checks)
   const nodeCheck = checkNodeVersion();
@@ -29,11 +33,14 @@ export async function doctorCommand(): Promise<void> {
 
     // Validate Discord bot token (single token for all projects)
     if (config.discordBotToken) {
+      const spinner = new Spinner("Validating Discord token");
+      spinner.start();
       const result = await validateDiscordToken(config.discordBotToken);
       if (result.valid && result.botInfo) {
-        check("Discord bot token", true, result.botInfo.username);
+        spinner.stop(`${c.green}✓${c.reset} Discord bot token ${c.dim}— ${result.botInfo.username}${c.reset}`);
       } else {
-        check("Discord bot token", false, result.error ?? "invalid");
+        spinner.stop(`${c.red}✗${c.reset} Discord bot token ${c.dim}— ${result.error ?? "invalid"}${c.reset}`);
+        ok = false;
       }
     } else {
       check("Discord bot token", false, "not configured");
@@ -51,5 +58,9 @@ export async function doctorCommand(): Promise<void> {
   // Daemon status
   check("Daemon running", isDaemonRunning());
 
-  console.log(ok ? "\nAll checks passed." : "\nSome checks failed. Fix the issues above.");
+  if (ok) {
+    console.log(`\n  ${c.green}${c.bold}All checks passed.${c.reset}`);
+  } else {
+    console.log(`\n  ${c.red}Some checks failed.${c.reset} Fix the issues above.`);
+  }
 }

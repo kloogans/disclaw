@@ -3,12 +3,13 @@ import { stdin, stdout } from "node:process";
 import { loadConfig, saveConfig, configExists } from "../config/store.js";
 import { isDaemonRunning, signalDaemon } from "../config/state.js";
 import { validateDiscordToken } from "./checks.js";
+import { fail, done, c, Spinner } from "./ui.js";
 
 const MAX_TOKEN_ATTEMPTS = 3;
 
 export async function tokenUpdateCommand(): Promise<void> {
   if (!configExists()) {
-    console.error("Run `disclaw setup` first.");
+    fail("Run `disclaw setup` first.");
     process.exit(1);
   }
 
@@ -16,14 +17,16 @@ export async function tokenUpdateCommand(): Promise<void> {
 
   // Show current bot info
   if (config.discordBotToken) {
+    const spinner = new Spinner("Checking current token");
+    spinner.start();
     const currentResult = await validateDiscordToken(config.discordBotToken);
     if (currentResult.valid && currentResult.botInfo) {
-      console.log(`\nCurrent bot: ${currentResult.botInfo.username}`);
+      spinner.stop(`${c.green}✓${c.reset} Current bot: ${c.bold}${currentResult.botInfo.username}${c.reset}`);
     } else {
-      console.log("\nCurrent bot: unknown (token invalid)");
+      spinner.stop(`${c.red}✗${c.reset} Current bot: ${c.dim}unknown (token invalid)${c.reset}`);
     }
   } else {
-    console.log("\nNo bot token configured.");
+    fail("No bot token configured.");
   }
 
   const rl = readline.createInterface({ input: stdin, output: stdout });
@@ -32,24 +35,26 @@ export async function tokenUpdateCommand(): Promise<void> {
     let newToken = "";
 
     for (let attempt = 1; attempt <= MAX_TOKEN_ATTEMPTS; attempt++) {
-      const token = (await rl.question("\nNew bot token: ")).trim();
+      const token = (await rl.question(`\n  ${c.bold}New bot token:${c.reset} `)).trim();
       if (!token) {
-        console.log("  ✗ Token cannot be empty.");
+        fail("Token cannot be empty.");
         if (attempt < MAX_TOKEN_ATTEMPTS) continue;
-        console.error("Max attempts reached.");
+        fail("Max attempts reached.");
         return;
       }
 
+      const spinner = new Spinner("Validating token");
+      spinner.start();
       const result = await validateDiscordToken(token);
       if (result.valid && result.botInfo) {
+        spinner.stop(`${c.green}✓${c.reset} Token valid — ${c.bold}${result.botInfo.username}${c.reset}`);
         newToken = token;
-        console.log(`  ✓ Token valid — ${result.botInfo.username}`);
         break;
       }
 
-      console.log(`  ✗ ${result.error ?? "Invalid token"} — check and try again.`);
+      spinner.stop(`${c.red}✗${c.reset} ${result.error ?? "Invalid token"}`);
       if (attempt >= MAX_TOKEN_ATTEMPTS) {
-        console.error("Max attempts reached.");
+        fail("Max attempts reached.");
         return;
       }
     }
@@ -58,15 +63,15 @@ export async function tokenUpdateCommand(): Promise<void> {
     config.discordBotToken = newToken;
     saveConfig(config);
 
-    console.log("\n✅ Token updated.");
+    done("Token updated.");
 
     // Hot-reload if daemon is running (token change triggers full restart)
     if (isDaemonRunning()) {
-      process.stdout.write("  Reloading... ");
+      const spinner = new Spinner("Reloading daemon");
+      spinner.start();
       signalDaemon("SIGHUP");
-      // Give it a moment to restart
       await new Promise((r) => setTimeout(r, 3000));
-      console.log("✓ daemon notified");
+      spinner.stop(`${c.green}✓${c.reset} Daemon notified`);
     }
   } finally {
     rl.close();

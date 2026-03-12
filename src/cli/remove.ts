@@ -1,11 +1,12 @@
 import { loadConfig, saveConfig, removeProject } from "../config/store.js";
 import { loadState, saveState, isDaemonRunning, signalDaemon } from "../config/state.js";
+import { success, fail, c } from "./ui.js";
 
 export async function removeCommand(name: string): Promise<void> {
   const config = loadConfig();
   const exists = config.projects.some((p) => p.name === name);
   if (!exists) {
-    console.error(`Project "${name}" not found. Run: disclaw list`);
+    fail(`Project "${name}" not found. Run: disclaw list`);
     process.exit(1);
   }
 
@@ -16,11 +17,11 @@ export async function removeCommand(name: string): Promise<void> {
   delete state.sessions[name];
   saveState(state);
 
-  console.log(`Project "${name}" removed.`);
+  success(`Project "${name}" removed.`);
 
   // Hot-reload daemon if running
   if (isDaemonRunning()) {
     signalDaemon("SIGHUP");
-    console.log("Bot stopping...");
+    console.log(`  ${c.dim}Bot stopping...${c.reset}`);
   }
 }
