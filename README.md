@@ -15,7 +15,7 @@ Remote Claude Code control via Discord. Run Claude as a daemon and interact with
 
 ## Features
 
-- **One channel per project** - each project gets its own Discord channel, with a single bot managing them all
+- **One channel per project** - each project gets its own Discord channel with an independent Claude session
 - **Images and documents** - send screenshots, photos, or files for Claude to analyze
 - **Permission approval via buttons** - approve, always-approve, or deny tool usage with Discord buttons
 - **Slash commands** - Discord-native command interface with autocomplete
@@ -27,7 +27,7 @@ Remote Claude Code control via Discord. Run Claude as a daemon and interact with
 - **Thinking preview** - watch Claude's extended reasoning live before the response streams in
 - **Tool progress heartbeats** - see elapsed time during long-running tool operations
 - **Subagent notifications** - get notified when Claude spawns and completes subagents
-- **Token and context tracking** - per-turn token counts (input/output/cached) and context window usage after every response, with warnings at 80%+
+- **Context window tracking** - context window usage after every response, with warnings at 80%+
 - **Rate limit warnings** - proactive alerts when approaching or hitting rate limits
 - **Context compaction status** - notification when Claude compacts session history
 - **Prompt suggestions** - tappable button with Claude's suggested follow-up after each response
