@@ -27,6 +27,7 @@ Remote Claude Code control via Discord. Run Claude as a daemon and interact with
 - **Typing indicator** - Discord shows "typing..." while Claude is working
 - **Pinned responses** - Claude's last response is automatically pinned for easy reference
 - **`/undo` and `/diff`** - revert file changes or view git status from the chat
+- **Lightweight** - ~270kB unpacked, 7 dependencies
 
 ---
 
