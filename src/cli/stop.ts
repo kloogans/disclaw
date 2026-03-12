@@ -1,21 +1,22 @@
 import { isDaemonRunning, readPidFile, removePidFile } from "../config/state.js";
+import { success, warn, fail, c } from "./ui.js";
 
 export async function stopCommand(): Promise<void> {
   if (!isDaemonRunning()) {
-    console.log("Daemon is not running.");
+    console.log("  Daemon is not running.");
     return;
   }
 
   const pid = readPidFile();
   if (pid === null) {
-    console.log("No PID file found.");
+    console.log("  No PID file found.");
     return;
   }
 
   try {
     process.kill(pid, "SIGTERM");
   } catch {
-    console.log("Daemon process not found. Cleaning up PID file.");
+    warn("Daemon process not found. Cleaning up PID file.");
     removePidFile();
     return;
   }
@@ -33,9 +34,9 @@ export async function stopCommand(): Promise<void> {
   }
 
   if (died) {
-    console.log(`Daemon stopped (PID: ${pid})`);
+    success(`Daemon stopped ${c.dim}(PID: ${pid})${c.reset}`);
     removePidFile();
   } else {
-    console.error(`Daemon (PID: ${pid}) did not stop within 5 seconds. Try: kill -9 ${pid}`);
+    fail(`Daemon (PID: ${pid}) did not stop within 5 seconds. Try: kill -9 ${pid}`);
   }
 }

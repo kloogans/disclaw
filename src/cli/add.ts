@@ -7,16 +7,17 @@ import { isDaemonRunning, signalDaemon } from "../config/state.js";
 import { pollForBotConnected } from "./log-poller.js";
 import { spawnDaemon } from "./spawn-daemon.js";
 import type { ProjectConfig } from "../config/types.js";
+import { step, hint, success, fail, done, c, Spinner } from "./ui.js";
 
 export async function addCommand(pathArg: string): Promise<void> {
   if (!configExists()) {
-    console.error("Run `disclaw setup` first.");
+    fail("Run `disclaw setup` first.");
     process.exit(1);
   }
 
   const projectPath = resolve(pathArg);
   if (!existsSync(projectPath)) {
-    console.error(`Directory not found: ${projectPath}`);
+    fail(`Directory not found: ${projectPath}`);
     process.exit(1);
   }
 
@@ -25,18 +26,18 @@ export async function addCommand(pathArg: string): Promise<void> {
   try {
     realPath = realpathSync(projectPath);
   } catch {
-    console.error(`Cannot resolve path: ${projectPath}`);
+    fail(`Cannot resolve path: ${projectPath}`);
     process.exit(1);
   }
   if (!statSync(realPath).isDirectory()) {
-    console.error(`Not a directory: ${realPath}`);
+    fail(`Not a directory: ${realPath}`);
     process.exit(1);
   }
 
   const config = loadConfig();
 
   if (!config.discordBotToken) {
-    console.error("No Discord bot token configured. Run `disclaw setup` first.");
+    fail("No Discord bot token configured. Run `disclaw setup` first.");
     process.exit(1);
   }
 
@@ -44,22 +45,26 @@ export async function addCommand(pathArg: string): Promise<void> {
 
   try {
     const defaultName = basename(realPath);
-    const name = (await rl.question(`Project name (${defaultName}): `)).trim() || defaultName;
+    const name =
+      (await rl.question(`  ${c.bold}Project name${c.reset} ${c.dim}(${defaultName}):${c.reset} `)).trim() ||
+      defaultName;
 
     // Check for duplicate project name
     if (config.projects.some((p) => p.name === name)) {
-      console.error(`\nProject "${name}" already exists. Use a different name or run: disclaw remove ${name}`);
+      fail(`Project "${name}" already exists. Use a different name or run: disclaw remove ${name}`);
       return;
     }
 
     // Try to auto-create a Discord channel, or ask for existing channel ID
     let channelId = "";
 
-    console.log("\nDiscord channel setup:");
-    console.log("  1. Auto-create a new channel (requires Manage Channels permission)");
-    console.log("  2. Use an existing channel ID\n");
+    console.log();
+    step(1, 1, "Discord Channel Setup");
+    hint("1. Auto-create a new channel (requires Manage Channels permission)");
+    hint("2. Use an existing channel ID");
+    console.log();
 
-    const choice = (await rl.question("  Choice (1): ")).trim() || "1";
+    const choice = (await rl.question(`  ${c.bold}Choice${c.reset} ${c.dim}(1):${c.reset} `)).trim() || "1";
 
     if (choice === "1") {
       // Auto-create channel via Discord REST API
@@ -67,6 +72,10 @@ export async function addCommand(pathArg: string): Promise<void> {
         .toLowerCase()
         .replace(/[^a-z0-9-]/g, "-")
         .slice(0, 100);
+
+      const spinner = new Spinner("Creating channel");
+      spinner.start();
+
       try {
         const res = await fetch(`https://discord.com/api/v10/guilds/${config.discordGuildId}/channels`, {
           method: "POST",
@@ -83,36 +92,39 @@ export async function addCommand(pathArg: string): Promise<void> {
 
         if (!res.ok) {
           const err = await res.text();
-          console.log(`  ✗ Failed to create channel: ${res.status} ${err}`);
-          console.log("  Falling back to manual channel ID entry.\n");
+          spinner.stop(`${c.red}✗${c.reset} Failed to create channel: ${res.status} ${err}`);
+          hint("Falling back to manual channel ID entry.");
+          console.log();
         } else {
           const data = (await res.json()) as { id?: string; name?: string };
           if (data.id) {
             channelId = data.id;
-            console.log(`  ✓ Created channel #${data.name ?? channelName}\n`);
+            spinner.stop(`${c.green}✓${c.reset} Created channel ${c.bold}#${data.name ?? channelName}${c.reset}`);
           }
         }
       } catch (err) {
-        console.log(`  ✗ Network error: ${err instanceof Error ? err.message : String(err)}`);
-        console.log("  Falling back to manual channel ID entry.\n");
+        spinner.stop(`${c.red}✗${c.reset} Network error: ${err instanceof Error ? err.message : String(err)}`);
+        hint("Falling back to manual channel ID entry.");
+        console.log();
       }
     }
 
     if (!channelId) {
-      console.log("  Enable Developer Mode: User Settings → Advanced → Developer Mode");
-      console.log("  Right-click the channel → Copy Channel ID\n");
+      hint("Enable Developer Mode: User Settings → Advanced → Developer Mode");
+      hint("Right-click the channel → Copy Channel ID");
+      console.log();
 
-      channelId = (await rl.question("  Channel ID: ")).trim();
+      channelId = (await rl.question(`  ${c.bold}Channel ID:${c.reset} `)).trim();
       if (!channelId || !/^\d+$/.test(channelId)) {
-        console.error("\n  ✗ Invalid channel ID — must be a numeric snowflake.");
+        fail("Invalid channel ID — must be a numeric snowflake.");
         return;
       }
-      console.log("  ✓ Valid channel ID\n");
+      success("Valid channel ID");
     }
 
     // Check for duplicate channel
     if (config.projects.some((p) => p.channelId === channelId)) {
-      console.error(`\nChannel ${channelId} is already assigned to another project.`);
+      fail(`Channel ${channelId} is already assigned to another project.`);
       return;
     }
 
@@ -125,30 +137,31 @@ export async function addCommand(pathArg: string): Promise<void> {
     const updatedConfig = addProject(config, project);
     saveConfig(updatedConfig);
 
-    console.log(`✅ Project "${name}" registered.`);
+    done(`Project "${name}" registered.`);
 
     // Auto-start or hot-reload daemon
+    const spinner = new Spinner(isDaemonRunning() ? "Reloading daemon" : "Starting daemon");
+    spinner.start();
+
     if (isDaemonRunning()) {
-      process.stdout.write("  Reloading daemon... ");
       if (!signalDaemon("SIGHUP")) {
-        console.log("⚠ failed to signal daemon, starting a new one...");
+        spinner.stop(`${c.yellow}⚠${c.reset} Failed to signal daemon, starting a new one...`);
         spawnDaemon();
       }
     } else {
-      process.stdout.write("  Starting daemon... ");
       spawnDaemon();
     }
 
     // Poll for connectivity
     const { connected } = await pollForBotConnected([name], 5000);
     if (connected.length > 0) {
-      console.log("✓ connected");
+      spinner.stop(`${c.green}✓${c.reset} Connected`);
     } else {
-      console.log("⚠ not yet connected");
-      console.log(`  Check: disclaw logs ${name}`);
+      spinner.stop(`${c.yellow}⚠${c.reset} Not yet connected`);
+      hint(`Check: disclaw logs ${name}`);
     }
 
-    console.log(`\nOpen Discord and send a message in the project channel.`);
+    console.log(`\n  Open Discord and send a message in the project channel.`);
   } finally {
     rl.close();
   }
