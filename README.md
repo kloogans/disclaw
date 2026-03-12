@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/disclaw_logo_full_circle.png" alt="disclaw" width="400">
+  <img src="https://raw.githubusercontent.com/kloogans/disclaw/main/assets/disclaw_logo_full_circle.png" alt="disclaw" width="400">
 </p>
 
 Remote Claude Code control via Discord. Run Claude as a daemon and interact with your projects from anywhere through Discord channels.
@@ -78,7 +78,7 @@ After running `disclaw setup`, the config file lives at `~/.disclaw/config.json`
     "thinking": "adaptive",
     "permissionMode": "default",
     "allowedTools": ["Read", "Glob", "Grep", "WebSearch"],
-    "settingSources": ["project"],
+    "settingSources": ["user", "project"],
     "maxTurns": null
   },
   "messageBatchDelayMs": 3000,
@@ -122,7 +122,7 @@ Any project entry can override `model`, `permissionMode`, and `allowedTools`:
   "path": "/path/to/my-saas",
   "channelId": "123456789012345678",
   "model": "opus",
-  "permissionMode": "auto",
+  "permissionMode": "acceptEdits",
   "allowedTools": ["Read", "Edit", "Bash", "Glob", "Grep"]
 }
 ```
@@ -159,7 +159,7 @@ These commands are available in any project channel:
 | `/help` | Show all available commands |
 | `/cancel` | Interrupt the current operation |
 | `/model <name>` | Switch model (`sonnet`, `opus`, `haiku`) |
-| `/mode <mode>` | Switch permission mode (`auto`, `plan`, `default`) |
+| `/mode <mode>` | Switch permission mode (`default`, `acceptEdits`, `plan`, `dontAsk`) |
 | `/simplify` | Review and simplify recently changed code |
 | `/review` | Review recent changes for bugs and issues |
 | `/commit [message]` | Commit current changes with a generated or custom message |

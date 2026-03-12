@@ -93,7 +93,7 @@ export async function handleSlashCommand(
         "**Commands:**\n\n" +
           "/new - Start a fresh session\n" +
           "/model `<name>` - Switch model (sonnet, opus, haiku)\n" +
-          "/mode `<mode>` - Switch permission mode (auto, plan, default)\n" +
+          "/mode `<mode>` - Switch permission mode (default, acceptEdits, plan, dontAsk)\n" +
           "/cancel - Interrupt current operation\n" +
           "/simplify - Review and simplify recently changed code\n" +
           "/review - Review recent changes for bugs and issues\n" +

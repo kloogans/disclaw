@@ -23,7 +23,7 @@ export async function startCommand(): Promise<void> {
   const pid = spawnDaemon();
 
   if (!pid) {
-    console.error("Failed to spawn daemon process. Run: npm run build");
+    console.error("Failed to spawn daemon process. Try reinstalling: npm install -g disclaw");
     process.exit(1);
   }
 

@@ -24,7 +24,7 @@
     "format:check": "prettier --check src/",
     "test": "vitest run",
     "prepare": "npm run build",
-    "postinstall": "node -e \"const{chmodSync,existsSync}=require('fs');const{join}=require('path');const p=join(__dirname,'node_modules/systray2/traybin/tray_darwin_release');if(existsSync(p))chmodSync(p,0o755);const l=join(__dirname,'node_modules/systray2/traybin/tray_linux_release');if(existsSync(l))chmodSync(l,0o755)\""
+    "postinstall": "node --input-type=module -e \"import{chmodSync,existsSync}from'node:fs';import{join,dirname}from'node:path';import{fileURLToPath}from'node:url';const d=dirname(fileURLToPath(import.meta.url));for(const b of['tray_darwin_release','tray_linux_release']){const p=join(d,'node_modules/systray2/traybin',b);if(existsSync(p))chmodSync(p,0o755);}\""
   },
   "engines": {
     "node": ">=22"

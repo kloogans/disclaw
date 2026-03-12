@@ -22,6 +22,19 @@ export async function logsCommand(name: string | undefined, opts: { lines: strin
     process.exit(1);
   }
 
+  if (process.platform === "win32") {
+    const tail = spawn("powershell", ["-Command", `Get-Content -Path '${logFile}' -Tail ${opts.lines} -Wait`], {
+      stdio: "inherit",
+    });
+    tail.on("error", () => console.error("Failed to tail log file. Try: Get-Content -Path '" + logFile + "' -Wait"));
+    tail.on("close", (code) => process.exit(code ?? 0));
+    process.on("SIGINT", () => {
+      tail.kill();
+      process.exit(0);
+    });
+    return;
+  }
+
   const tail = spawn("tail", ["-n", opts.lines, "-f", logFile], { stdio: "inherit" });
   tail.on("error", () => console.error("Failed to tail log file"));
   tail.on("close", (code) => process.exit(code ?? 0));
