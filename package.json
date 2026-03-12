@@ -7,12 +7,9 @@
     "disclaw": "./dist/index.js"
   },
   "files": [
-    "src",
     "dist",
-    "package.json",
     "README.md",
-    "LICENSE",
-    "tsconfig.json"
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsup src/index.ts src/daemon.ts src/tray.ts --format esm --clean --external systray2",
