@@ -2,6 +2,13 @@
   <img src="https://raw.githubusercontent.com/kloogans/disclaw/main/assets/disclaw_logo_full_circle.png" alt="disclaw" width="400">
 </p>
 
+<p align="center">
+  <a href="https://www.npmjs.com/package/disclaw"><img src="https://img.shields.io/npm/v/disclaw" alt="npm version"></a>
+  <a href="https://github.com/kloogans/disclaw/actions"><img src="https://img.shields.io/github/actions/workflow/status/kloogans/disclaw/ci.yml?branch=main" alt="build status"></a>
+  <a href="https://www.npmjs.com/package/disclaw"><img src="https://img.shields.io/npm/dm/disclaw" alt="npm downloads"></a>
+  <a href="https://github.com/kloogans/disclaw/blob/main/LICENSE"><img src="https://img.shields.io/npm/l/disclaw" alt="license"></a>
+</p>
+
 Remote Claude Code control via Discord. Run Claude as a daemon and interact with your projects from anywhere through Discord channels.
 
 ---
