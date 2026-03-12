@@ -186,7 +186,7 @@ These commands are available in any project channel:
 
 - **Linux, macOS, or Windows** - auto-start via systemd, LaunchAgent, or Task Scheduler
 - **Node.js 22+**
-- **Claude Code** with a Max subscription (the Agent SDK authenticates via your existing Claude Code login, no API key needed)
+- **Claude Code** authenticated (the Agent SDK uses your existing Claude Code login or API key)
 - **A Discord server** where you can add a bot
 
 ---
