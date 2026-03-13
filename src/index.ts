@@ -13,7 +13,7 @@ import { doctorCommand } from "./cli/doctor.js";
 
 const program = new Command();
 
-program.name("disclaw").description("Remote Claude Code control via Discord").version("0.2.1");
+program.name("disclaw").description("Remote Claude Code control via Discord").version("0.2.2");
 
 program.command("setup").description("First-time setup — configure Discord bot and server").action(setupCommand);
 

@@ -52,7 +52,8 @@ export function buildSlashCommands(): SlashCommandBuilder[] {
       .addStringOption((opt) =>
         opt.setName("id").setDescription("Session ID").setRequired(true),
       ) as SlashCommandBuilder,
-    new SlashCommandBuilder().setName("handoff").setDescription("Get CLI command to continue in Claude Code"),
+    new SlashCommandBuilder().setName("handoff").setDescription("Save session summary and hand off to a fresh context"),
+    new SlashCommandBuilder().setName("resume-cli").setDescription("Get CLI command to continue in Claude Code"),
     new SlashCommandBuilder().setName("status").setDescription("Project and session info"),
     new SlashCommandBuilder().setName("cost").setDescription("Session cost"),
     new SlashCommandBuilder().setName("simplify").setDescription("Review and simplify recently changed code"),
@@ -103,7 +104,8 @@ export async function handleSlashCommand(
           "/diff - Show recent git changes\n" +
           "/sessions - List past sessions\n" +
           "/resume `<id>` - Resume a session\n" +
-          "/handoff - Get CLI command to continue in Claude Code\n" +
+          "/handoff - Save session summary and hand off to a fresh context\n" +
+          "/resume-cli - Get CLI command to continue in Claude Code\n" +
           "/status - Show project & session info\n" +
           "/cost - Show session cost\n" +
           "/help - This message",
@@ -195,9 +197,15 @@ export async function handleSlashCommand(
     }
 
     case "handoff": {
+      callbacks.onSendPrompt("/handoff");
+      await interaction.reply("\uD83D\uDCE6 Saving session summary and handing off...");
+      return true;
+    }
+
+    case "resume-cli": {
       const sessionId = callbacks.onHandoff();
       if (!sessionId) {
-        await interaction.reply("No active session to hand off.");
+        await interaction.reply("No active session.");
         return true;
       }
       await interaction.reply(

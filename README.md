@@ -182,7 +182,8 @@ These commands are available in any project channel, thread, or forum post:
 | `/diff` | Show uncommitted changes and recent commits |
 | `/sessions` | List past sessions with resume buttons |
 | `/resume <id>` | Resume a previous session by ID |
-| `/handoff` | Get a `claude --resume` command to continue the session in Claude Code |
+| `/handoff` | Save session summary and hand off to a fresh context |
+| `/resume-cli` | Get a `claude --resume` command to continue the session in Claude Code |
 | `/status` | Show project info, model, session, token usage, and context window |
 | `/cost` | Show session cost, token breakdown, cache hits, and context usage |
 
