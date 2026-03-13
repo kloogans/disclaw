@@ -6,7 +6,7 @@ import type {
   PermissionResult as SDKPermissionResult,
 } from "@anthropic-ai/claude-agent-sdk";
 import type { AppConfig, ProjectConfig, PermissionMode } from "../config/types.js";
-import { saveSessionId, getLastSessionId } from "../config/state.js";
+import { saveSessionId, getLastSessionId, removeSessionEntry } from "../config/state.js";
 import { buildSystemPrompt } from "./system-prompt.js";
 import {
   isSystemInit,
@@ -304,6 +304,11 @@ export class SessionManager {
   addSessionAllowedTool(toolName: string): void {
     this.sessionAllowedTools.add(toolName);
     this.logger.info({ toolName }, "Tool added to session allow list");
+  }
+
+  clearSessionState(): void {
+    removeSessionEntry(this.sessionKey);
+    this.logger.info({ sessionKey: this.sessionKey }, "Session state cleared");
   }
 
   close(): void {

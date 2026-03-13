@@ -3,7 +3,7 @@ import { success, warn, fail, c } from "./ui.js";
 
 export async function stopCommand(): Promise<void> {
   if (!isDaemonRunning()) {
-    console.log("  Daemon is not running.");
+    console.log("  disclaw is not running.");
     return;
   }
 
@@ -16,7 +16,7 @@ export async function stopCommand(): Promise<void> {
   try {
     process.kill(pid, "SIGTERM");
   } catch {
-    warn("Daemon process not found. Cleaning up PID file.");
+    warn("disclaw process not found. Cleaning up PID file.");
     removePidFile();
     return;
   }
@@ -34,9 +34,9 @@ export async function stopCommand(): Promise<void> {
   }
 
   if (died) {
-    success(`Daemon stopped ${c.dim}(PID: ${pid})${c.reset}`);
+    success(`disclaw stopped ${c.dim}(PID: ${pid})${c.reset}`);
     removePidFile();
   } else {
-    fail(`Daemon (PID: ${pid}) did not stop within 5 seconds. Try: kill -9 ${pid}`);
+    fail(`disclaw (PID: ${pid}) did not stop within 5 seconds. Try: kill -9 ${pid}`);
   }
 }

@@ -65,7 +65,7 @@ This asks for:
 
 If you use an existing channel ID, the channel type is auto-detected.
 
-The daemon starts automatically and confirms the bot is connected to Discord.
+disclaw starts automatically and confirms the bot is connected to Discord.
 
 ### Text vs Forum channels
 
@@ -74,7 +74,7 @@ The daemon starts automatically and confirms the bot is connected to Discord.
 
 ### Adding more projects
 
-Repeat this step for each project. Each project gets its own channel. If the daemon is already running, new projects are added via hot-reload, no restart needed.
+Repeat this step for each project. Each project gets its own channel. If disclaw is already running, new projects are added via hot-reload, no restart needed.
 
 ---
 
@@ -162,11 +162,11 @@ disclaw setup           # First-time setup
 disclaw add <path>      # Register a project with a channel
 disclaw remove <name>   # Remove a project
 disclaw list            # See all your projects
-disclaw status          # Daemon and bot status
-disclaw start           # Start the daemon
-disclaw stop            # Stop the daemon
-disclaw restart         # Restart the daemon
-disclaw logs [name]     # Tail logs (daemon or specific project)
+disclaw status          # Status and project info
+disclaw start           # Start disclaw
+disclaw stop            # Stop disclaw
+disclaw restart         # Restart disclaw
+disclaw logs [name]     # Tail logs (main process or specific project)
 disclaw doctor          # Health check
 disclaw token-update    # Update the Discord bot token
 disclaw install         # Auto-start on login
@@ -178,13 +178,13 @@ disclaw uninstall       # Remove auto-start
 ## Troubleshooting
 
 **Bot doesn't respond?**
-- Run `disclaw status` to check if the daemon is running and the bot token is valid.
+- Run `disclaw status` to check if disclaw is running and the bot token is valid.
 - Run `disclaw logs <project-name>` and look for errors.
 - Make sure **Message Content Intent** is enabled in the Discord Developer Portal
 - Verify your Discord user ID: `disclaw doctor`
 
 **Slash commands not showing up?**
-- Guild-scoped commands should appear instantly. Try restarting the daemon: `disclaw restart`
+- Guild-scoped commands should appear instantly. Try restarting: `disclaw restart`
 - Make sure the bot has "Use Slash Commands" permission in your server
 
 **Need to update the bot token?**

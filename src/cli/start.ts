@@ -17,7 +17,7 @@ export async function startCommand(): Promise<void> {
 
   if (isDaemonRunning()) {
     console.log(
-      `  Daemon already running ${c.dim}(PID: ${readPidFile()})${c.reset}. Use 'disclaw restart' to restart.`,
+      `  disclaw already running ${c.dim}(PID: ${readPidFile()})${c.reset}. Use 'disclaw restart' to restart.`,
     );
     return;
   }
@@ -27,11 +27,11 @@ export async function startCommand(): Promise<void> {
   const pid = spawnDaemon();
 
   if (!pid) {
-    fail("Failed to spawn daemon process. Try reinstalling: npm install -g disclaw");
+    fail("Failed to start disclaw. Try reinstalling: npm install -g disclaw");
     process.exit(1);
   }
 
-  console.log(`  Daemon started ${c.dim}(PID: ${pid})${c.reset}\n`);
+  console.log(`  disclaw is clawing away ${c.dim}(PID: ${pid})${c.reset}\n`);
 
   for (const project of config.projects) {
     console.log(`  ${c.dim}•${c.reset} ${project.name}`);

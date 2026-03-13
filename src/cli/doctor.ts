@@ -55,8 +55,8 @@ export async function doctorCommand(): Promise<void> {
     }
   }
 
-  // Daemon status
-  check("Daemon running", isDaemonRunning());
+  // Process status
+  check("disclaw running", isDaemonRunning());
 
   if (ok) {
     console.log(`\n  ${c.green}${c.bold}All checks passed.${c.reset}`);

@@ -31,23 +31,34 @@ export function getLastSessionId(projectName: string): string | undefined {
   return state.sessions[projectName];
 }
 
-export function saveThreadSessionId(projectName: string, threadId: string, sessionId: string): void {
-  saveSessionId(`${projectName}/${threadId}`, sessionId);
-}
-
-export function getLastThreadSessionId(projectName: string, threadId: string): string | undefined {
-  return getLastSessionId(`${projectName}/${threadId}`);
-}
-
-export function clearThreadSessions(projectName: string): void {
+export function removeSessionEntry(key: string): void {
   const state = loadState();
-  const prefix = `${projectName}/`;
-  for (const key of Object.keys(state.sessions)) {
-    if (key.startsWith(prefix)) {
+  if (key in state.sessions) {
+    delete state.sessions[key];
+    saveState(state);
+  }
+}
+
+export function pruneThreadSessions(projectNames: string[], maxPerProject = 50): number {
+  const state = loadState();
+  let pruned = 0;
+
+  for (const name of projectNames) {
+    const prefix = `${name}/`;
+    const threadKeys = Object.keys(state.sessions).filter((k) => k.startsWith(prefix));
+    if (threadKeys.length <= maxPerProject) continue;
+
+    // Thread IDs are Discord snowflakes — sorting lexicographically is chronological
+    threadKeys.sort();
+    const toRemove = threadKeys.slice(0, threadKeys.length - maxPerProject);
+    for (const key of toRemove) {
       delete state.sessions[key];
+      pruned++;
     }
   }
-  saveState(state);
+
+  if (pruned > 0) saveState(state);
+  return pruned;
 }
 
 export function writePidFile(): void {

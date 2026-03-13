@@ -1,5 +1,5 @@
 import { loadConfig } from "./config/store.js";
-import { writePidFile, removePidFile, isDaemonRunning, readPidFile } from "./config/state.js";
+import { writePidFile, removePidFile, isDaemonRunning, readPidFile, pruneThreadSessions } from "./config/state.js";
 import { DiscordBot } from "./bot/discord-client.js";
 import { createLogger } from "./utils/logger.js";
 import { cleanupMedia } from "./media/cleanup.js";
@@ -148,6 +148,13 @@ async function main(): Promise<void> {
     logger.fatal("No Discord bot token configured. Run 'disclaw setup' first.");
     removePidFile();
     process.exit(1);
+  }
+
+  // Prune stale thread sessions
+  const projectNames = config.projects.map((p) => p.name);
+  const pruned = pruneThreadSessions(projectNames);
+  if (pruned > 0) {
+    logger.info({ pruned }, "Pruned stale thread sessions");
   }
 
   startBotWithRecovery(config);

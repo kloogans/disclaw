@@ -67,11 +67,11 @@ export async function tokenUpdateCommand(): Promise<void> {
 
     // Hot-reload if daemon is running (token change triggers full restart)
     if (isDaemonRunning()) {
-      const spinner = new Spinner("Reloading daemon");
+      const spinner = new Spinner("Reloading disclaw");
       spinner.start();
       signalDaemon("SIGHUP");
       await new Promise((r) => setTimeout(r, 3000));
-      spinner.stop(`${c.green}✓${c.reset} Daemon notified`);
+      spinner.stop(`${c.green}✓${c.reset} disclaw reloaded`);
     }
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === "ABORT_ERR") {
