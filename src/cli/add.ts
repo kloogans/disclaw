@@ -7,7 +7,7 @@ import { isDaemonRunning, signalDaemon } from "../config/state.js";
 import { captureLogOffsets, pollForBotConnected } from "./log-poller.js";
 import { spawnDaemon } from "./spawn-daemon.js";
 import type { ProjectConfig } from "../config/types.js";
-import { step, hint, success, fail, done, c, Spinner } from "./ui.js";
+import { step, hint, fail, done, c, Spinner } from "./ui.js";
 
 export async function addCommand(pathArg: string): Promise<void> {
   if (!configExists()) {
