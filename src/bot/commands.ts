@@ -73,6 +73,7 @@ export function buildSlashCommands(): SlashCommandBuilder[] {
       .addStringOption((opt) =>
         opt.setName("args").setDescription("Arguments to pass to the skill").setRequired(false),
       ) as SlashCommandBuilder,
+    new SlashCommandBuilder().setName("ping").setDescription("Check if the bot is alive"),
     new SlashCommandBuilder().setName("help").setDescription("Show all commands"),
   ];
 }
@@ -108,6 +109,7 @@ export async function handleSlashCommand(
           "/resume-cli - Get CLI command to continue in Claude Code\n" +
           "/status - Show project & session info\n" +
           "/cost - Show session cost\n" +
+          "/ping - Check if the bot is alive\n" +
           "/help - This message",
       );
       return true;
@@ -258,6 +260,12 @@ export async function handleSlashCommand(
       const prompt = args ? `/${name} ${args}` : `/${name}`;
       callbacks.onSendPrompt(prompt);
       await interaction.reply(`\uD83D\uDD27 Running /${escapeMarkdown(name)}...`);
+      return true;
+    }
+
+    case "ping": {
+      const latency = interaction.client.ws.ping;
+      await interaction.reply(`Pong! ${latency >= 0 ? `${latency}ms` : "measuring..."}`);
       return true;
     }
 

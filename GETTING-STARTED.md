@@ -69,8 +69,8 @@ disclaw starts automatically and confirms the bot is connected to Discord.
 
 ### Text vs Forum channels
 
-- **Text channel** — messages go directly in the channel. You can also create threads for parallel conversations — each thread gets its own independent Claude session.
-- **Forum channel** — every conversation is a post/thread. Great for organizing multiple tasks, bugs, or features per project. Each post gets its own independent Claude session.
+- **Text channel** - messages go directly in the channel. You can also create threads for parallel conversations, each with its own independent Claude session.
+- **Forum channel** - every conversation is a post/thread. Great for organizing multiple tasks, bugs, or features per project. Each post gets its own independent Claude session.
 
 ### Adding more projects
 
@@ -95,7 +95,7 @@ Repeat this step for each project. Each project gets its own channel. If disclaw
 Just type normally. Claude sees your full project and works on it.
 
 ### Threads
-Create a thread in any text channel or post in a forum channel. Each thread gets its own independent Claude session with separate context — perfect for working on multiple tasks in parallel without them interfering with each other. Threads are automatically managed: Claude joins new threads, and sessions are cleaned up when threads are archived or deleted.
+Create a thread in any text channel or post in a forum channel. Each thread gets its own independent Claude session with separate context, perfect for working on multiple tasks in parallel without them interfering with each other. Threads are automatically managed: Claude joins new threads, and sessions are cleaned up when threads are archived or deleted.
 
 ### Images
 Send a screenshot or photo. Claude can see and analyze it.
@@ -107,17 +107,24 @@ Send a file. Claude can read and process it.
 
 | Command | What it does |
 |---|---|
-| `/help` | Show all commands |
 | `/new` | Start a fresh Claude session |
 | `/cancel` | Stop what Claude is doing |
-| `/model opus` | Switch to a more powerful model |
-| `/status` | See project info, tokens, and context usage |
-| `/cost` | See session cost and token breakdown |
+| `/model <name>` | Switch model (sonnet, opus, haiku) |
+| `/mode <mode>` | Switch permission mode (default, acceptEdits, plan, dontAsk) |
+| `/simplify` | Review and simplify recently changed code |
+| `/review` | Review recent changes for bugs and issues |
+| `/commit [message]` | Commit current changes |
+| `/skill <name> [args]` | Run any Claude Code skill |
 | `/undo` | Revert last file changes |
 | `/diff` | Show uncommitted changes and recent commits |
 | `/sessions` | List past sessions (click any to resume) |
+| `/resume <id>` | Resume a previous session by ID |
 | `/handoff` | Save session summary and hand off to a fresh context |
 | `/resume-cli` | Get a CLI command to continue in Claude Code |
+| `/status` | See project info, tokens, and context usage |
+| `/cost` | See session cost and token breakdown |
+| `/ping` | Check if the bot is alive |
+| `/help` | Show all commands |
 
 ### Live feedback while Claude works
 
@@ -126,9 +133,9 @@ Send a file. Claude can read and process it.
 - **Tool progress** - elapsed time shown during long-running operations
 - **Subagent status** - notifications when Claude spawns and completes subagents
 
-After each response, a usage footer shows tokens used and cost:
+After each response, a usage footer shows tokens and context usage:
 ```
-12.5k in · 3.2k out · 8.1k cached · $0.0234
+12.5k in · 3.2k out · 8.1k cached · ctx 45%
 ```
 
 ### Permission approvals

@@ -70,8 +70,8 @@ export async function addCommand(pathArg: string): Promise<void> {
     if (choice === "1") {
       // Ask for channel type
       console.log();
-      hint("a. Text channel — messages go directly in the channel");
-      hint("b. Forum channel — each conversation becomes a post/thread");
+      hint("a. Text channel - messages go directly in the channel");
+      hint("b. Forum channel - each conversation becomes a post/thread");
       console.log();
 
       const typeChoice =
@@ -98,7 +98,7 @@ export async function addCommand(pathArg: string): Promise<void> {
           body: JSON.stringify({
             name: channelName,
             type: channelType,
-            topic: `Disclaw: ${name} — ${realPath}`,
+            topic: `Disclaw: ${name} - ${realPath}`,
           }),
         });
 
@@ -128,7 +128,7 @@ export async function addCommand(pathArg: string): Promise<void> {
 
       channelId = (await rl.question(`  ${c.bold}Channel ID:${c.reset} `)).trim();
       if (!channelId || !/^\d+$/.test(channelId)) {
-        fail("Invalid channel ID — must be a numeric snowflake.");
+        fail("Invalid channel ID, must be a numeric snowflake.");
         return;
       }
 

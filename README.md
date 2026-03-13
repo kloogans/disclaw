@@ -17,14 +17,14 @@ Remote Claude Code control via Discord. Run Claude in the background and interac
 
 - **One channel per project** - each project gets its own Discord channel (text or forum) with an independent Claude session
 - **Thread support** - create Discord threads for parallel conversations, each with its own independent Claude session and context
-- **Forum channels** - use forum channels where every conversation is a post/thread — great for organizing tasks, bugs, and features
+- **Forum channels** - use forum channels where every conversation is a post/thread, great for organizing tasks, bugs, and features
 - **Images and documents** - send screenshots, photos, or files for Claude to analyze
 - **Permission approval via buttons** - approve, always-approve, or deny tool usage with Discord buttons
 - **Slash commands** - Discord-native command interface with autocomplete
 - **Model and effort switching** - change models (sonnet, opus, haiku) and effort levels mid-conversation
 - **Auto-start** - install as a systemd service (Linux), macOS LaunchAgent, or Windows scheduled task
 - **Multi-turn conversations** - send multiple messages that get batched intelligently before sending to Claude
-- **Session management** - list past sessions with tappable resume buttons, or hand off to Claude Code CLI
+- **Session management** - list past sessions with tappable resume buttons, hand off context, or continue in Claude Code CLI
 - **Live response streaming** - see Claude's response as it types, updated every few seconds
 - **Thinking preview** - watch Claude's extended reasoning live before the response streams in
 - **Tool progress heartbeats** - see elapsed time during long-running tool operations
@@ -34,15 +34,14 @@ Remote Claude Code control via Discord. Run Claude in the background and interac
 - **Context compaction status** - notification when Claude compacts session history
 - **Prompt suggestions** - tappable button with Claude's suggested follow-up after each response
 - **Typing indicator** - Discord shows "typing..." while Claude is working
-- **Pinned responses** - Claude's last response is automatically pinned for easy reference
+- **Session pinning** - session ID is pinned at the start of each session for easy reference
 - **`/undo` and `/diff`** - revert file changes or view git status from the chat
-- **Lightweight** - ~127kB unpacked
 
 ---
 
 ## How It Works
 
-disclaw runs a single background process with one [discord.js](https://discord.js.org/) client connected to your Discord server. Each registered project is mapped to a Discord channel — either a **text channel** or a **forum channel**. Messages are forwarded to the [Claude Agent SDK](https://github.com/anthropic-ai/claude-agent-sdk), which spawns Claude Code subprocesses scoped to the project directory.
+disclaw runs a single background process with one [discord.js](https://discord.js.org/) client connected to your Discord server. Each registered project is mapped to a Discord channel, either a **text channel** or a **forum channel**. Messages are forwarded to the [Claude Agent SDK](https://github.com/anthropic-ai/claude-agent-sdk), which spawns Claude Code subprocesses scoped to the project directory.
 
 Threads and forum posts each get their own independent Claude session with separate context, so you can run multiple parallel conversations per project. Thread handlers are created on first message and automatically cleaned up when threads are archived or deleted.
 
@@ -119,7 +118,7 @@ After running `disclaw setup`, the config file lives at `~/.disclaw/config.json`
 | `defaults.thinking` | (not set) | Thinking mode: `adaptive`, `enabled`, or `disabled` |
 | `defaults.permissionMode` | `"default"` | How tool permissions are handled: `default`, `acceptEdits`, `bypassPermissions`, `plan`, `auto`, or `dontAsk` |
 | `defaults.allowedTools` | `["Read", "Glob", "Grep", "WebSearch"]` | Tools auto-approved without prompting |
-| `defaults.settingSources` | `["project"]` | Where to load project settings from |
+| `defaults.settingSources` | `["user", "project"]` | Where to load project settings from |
 | `defaults.maxTurns` | (not set) | Maximum number of conversation turns per request |
 | `messageBatchDelayMs` | `3000` | Delay in ms to batch multiple messages before sending to Claude |
 | `permissionTimeoutMs` | `300000` | Timeout in ms before a permission request is auto-denied (5 minutes) |
@@ -170,7 +169,6 @@ These commands are available in any project channel, thread, or forum post:
 | Command | Description |
 |---|---|
 | `/new` | Start a fresh Claude session |
-| `/help` | Show all available commands |
 | `/cancel` | Interrupt the current operation |
 | `/model <name>` | Switch model (`sonnet`, `opus`, `haiku`) |
 | `/mode <mode>` | Switch permission mode (`default`, `acceptEdits`, `plan`, `dontAsk`) |
@@ -183,9 +181,11 @@ These commands are available in any project channel, thread, or forum post:
 | `/sessions` | List past sessions with resume buttons |
 | `/resume <id>` | Resume a previous session by ID |
 | `/handoff` | Save session summary and hand off to a fresh context |
-| `/resume-cli` | Get a `claude --resume` command to continue the session in Claude Code |
+| `/resume-cli` | Get a `claude --resume` command to continue in Claude Code |
 | `/status` | Show project info, model, session, token usage, and context window |
 | `/cost` | Show session cost, token breakdown, cache hits, and context usage |
+| `/ping` | Check if the bot is alive |
+| `/help` | Show all available commands |
 
 ---
 
@@ -218,8 +218,9 @@ src/
 ├── config/           # Configuration and state management
 ├── media/            # Image and document handling
 ├── utils/            # Shared utilities (chunker, secrets, throttle)
-├── daemon.ts         # Background daemon entry point
+├── daemon.ts         # Background process entry point
 ├── index.ts          # CLI entry point
+├── version.ts        # Shared version constant
 └── tray.ts           # System tray entry point
 ```
 

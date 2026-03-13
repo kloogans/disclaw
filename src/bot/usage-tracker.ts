@@ -39,7 +39,7 @@ export class UsageTracker {
     if (this.lastContextWindow > 0) {
       const usedPct = Math.round((usage.inputTokens / this.lastContextWindow) * 100);
       if (usedPct >= 80) {
-        return `\`${parts.join(" · ")} · ctx ${usedPct}% — consider /new\``;
+        return `\`${parts.join(" · ")} · ctx ${usedPct}% - consider /new\``;
       }
       parts.push(`ctx ${usedPct}%`);
     }

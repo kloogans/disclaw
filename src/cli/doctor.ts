@@ -7,9 +7,9 @@ export async function doctorCommand(): Promise<void> {
   let ok = true;
   const check = (label: string, pass: boolean, detail?: string) => {
     if (pass) {
-      success(`${label}${detail ? ` ${c.dim}— ${detail}${c.reset}` : ""}`);
+      success(`${label}${detail ? ` ${c.dim}- ${detail}${c.reset}` : ""}`);
     } else {
-      fail(`${label}${detail ? ` ${c.dim}— ${detail}${c.reset}` : ""}`);
+      fail(`${label}${detail ? ` ${c.dim}- ${detail}${c.reset}` : ""}`);
       ok = false;
     }
   };
@@ -37,9 +37,9 @@ export async function doctorCommand(): Promise<void> {
       spinner.start();
       const result = await validateDiscordToken(config.discordBotToken);
       if (result.valid && result.botInfo) {
-        spinner.stop(`${c.green}✓${c.reset} Discord bot token ${c.dim}— ${result.botInfo.username}${c.reset}`);
+        spinner.stop(`${c.green}✓${c.reset} Discord bot token ${c.dim}- ${result.botInfo.username}${c.reset}`);
       } else {
-        spinner.stop(`${c.red}✗${c.reset} Discord bot token ${c.dim}— ${result.error ?? "invalid"}${c.reset}`);
+        spinner.stop(`${c.red}✗${c.reset} Discord bot token ${c.dim}- ${result.error ?? "invalid"}${c.reset}`);
         ok = false;
       }
     } else {

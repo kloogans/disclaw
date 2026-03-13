@@ -47,7 +47,7 @@ export async function tokenUpdateCommand(): Promise<void> {
       spinner.start();
       const result = await validateDiscordToken(token);
       if (result.valid && result.botInfo) {
-        spinner.stop(`${c.green}✓${c.reset} Token valid — ${c.bold}${result.botInfo.username}${c.reset}`);
+        spinner.stop(`${c.green}✓${c.reset} Token valid - ${c.bold}${result.botInfo.username}${c.reset}`);
         newToken = token;
         break;
       }
