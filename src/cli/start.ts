@@ -1,8 +1,7 @@
 import { isDaemonRunning, readPidFile } from "../config/state.js";
 import { loadConfig, configExists } from "../config/store.js";
-import { captureLogOffsets, pollForBotConnected } from "./log-poller.js";
 import { spawnDaemon } from "./spawn-daemon.js";
-import { banner, success, fail, warn, c } from "./ui.js";
+import { banner, fail, c } from "./ui.js";
 
 export async function startCommand(): Promise<void> {
   if (!configExists()) {
@@ -25,10 +24,6 @@ export async function startCommand(): Promise<void> {
 
   banner("starting");
 
-  // Capture log offsets BEFORE spawning so we only see new handler_ready events
-  const projectNames = config.projects.map((p) => p.name);
-  const logOffsets = captureLogOffsets(projectNames);
-
   const pid = spawnDaemon();
 
   if (!pid) {
@@ -38,21 +33,9 @@ export async function startCommand(): Promise<void> {
 
   console.log(`  Daemon started ${c.dim}(PID: ${pid})${c.reset}\n`);
 
-  // Poll for bot connectivity
-  const { connected, pending } = await pollForBotConnected(projectNames, 15000, logOffsets);
-
-  for (const bot of connected) {
-    const username = bot.username ? ` ${c.dim}— @${bot.username}${c.reset}` : "";
-    success(`${bot.project}${username}`);
-  }
-  for (const name of pending) {
-    warn(`${name} ${c.dim}— not yet connected (check: disclaw logs ${name})${c.reset}`);
+  for (const project of config.projects) {
+    console.log(`  ${c.dim}•${c.reset} ${project.name}`);
   }
 
-  const total = config.projects.length;
-  if (pending.length === 0) {
-    console.log(`\n  ${c.green}${c.bold}${total} project(s) ready.${c.reset} Open Discord to start.`);
-  } else {
-    console.log(`\n  ${connected.length}/${total} bot(s) connected.`);
-  }
+  console.log(`\n  ${config.projects.length} project(s) registered. Check ${c.dim}disclaw logs${c.reset} for status.`);
 }

@@ -4,7 +4,6 @@ import { existsSync, realpathSync, statSync } from "node:fs";
 import { resolve, basename } from "node:path";
 import { loadConfig, saveConfig, addProject, configExists } from "../config/store.js";
 import { isDaemonRunning, signalDaemon } from "../config/state.js";
-import { captureLogOffsets, pollForBotConnected } from "./log-poller.js";
 import { spawnDaemon } from "./spawn-daemon.js";
 import type { ProjectConfig } from "../config/types.js";
 import { step, hint, fail, done, c, Spinner } from "./ui.js";
@@ -177,9 +176,6 @@ export async function addCommand(pathArg: string): Promise<void> {
 
     done(`Project "${name}" registered.`);
 
-    // Capture log offsets BEFORE spawn/reload so we only see new handler_ready events
-    const logOffsets = captureLogOffsets([name]);
-
     // Auto-start or hot-reload daemon
     const spinner = new Spinner(isDaemonRunning() ? "Reloading daemon" : "Starting daemon");
     spinner.start();
@@ -188,18 +184,12 @@ export async function addCommand(pathArg: string): Promise<void> {
       if (!signalDaemon("SIGHUP")) {
         spinner.stop(`${c.yellow}⚠${c.reset} Failed to signal daemon, starting a new one...`);
         spawnDaemon();
+      } else {
+        spinner.stop(`${c.green}✓${c.reset} Daemon reloaded`);
       }
     } else {
       spawnDaemon();
-    }
-
-    // Poll for connectivity
-    const { connected } = await pollForBotConnected([name], 5000, logOffsets);
-    if (connected.length > 0) {
-      spinner.stop(`${c.green}✓${c.reset} Connected`);
-    } else {
-      spinner.stop(`${c.yellow}⚠${c.reset} Not yet connected`);
-      hint(`Check: disclaw logs ${name}`);
+      spinner.stop(`${c.green}✓${c.reset} Daemon started`);
     }
 
     if (isForum) {
