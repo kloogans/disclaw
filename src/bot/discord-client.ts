@@ -18,6 +18,10 @@ import type pino from "pino";
 
 const MAX_THREAD_HANDLERS = 10;
 
+type StopReason = "delete" | "archive" | "evict" | "remove-project";
+
+type ResolveResult = { status: "found"; handler: ProjectHandler } | { status: "not_found" } | { status: "at_capacity" };
+
 export class DiscordBot {
   private client: Client;
   private config: AppConfig;
@@ -46,25 +50,7 @@ export class DiscordBot {
 
       // Resolve channels for all handlers
       for (const [channelId, handler] of this.handlers) {
-        try {
-          const channel = await this.client.channels.fetch(channelId);
-          if (channel && channel.type === ChannelType.GuildText) {
-            handler.setChannel(channel as TextChannel);
-          } else if (channel && channel.type === ChannelType.GuildForum) {
-            // Forum channels are thread-only — the parent handler keeps channel=null.
-            // All messages arrive via forum post threads handled by resolveHandler → createThreadHandler.
-            this.logger.info({ channelId, project: handler.projectName }, "Forum channel registered (thread-only)");
-            handler.markReady(channel.name);
-            await this.joinActiveForumThreads(channel as ForumChannel, channelId);
-          } else {
-            this.logger.warn(
-              { channelId, project: handler.projectName },
-              "Channel not found or not a supported channel type",
-            );
-          }
-        } catch (err) {
-          this.logger.error({ err, channelId, project: handler.projectName }, "Failed to fetch channel");
-        }
+        await this.resolveChannelForHandler(channelId, handler);
       }
     });
 
@@ -77,10 +63,18 @@ export class DiscordBot {
         message.type !== MessageType.ThreadStarterMessage
       )
         return;
-      const handler = this.resolveHandler(message.channelId, message.channel);
-      if (!handler) return;
+      const result = await this.resolveHandler(message.channelId, message.channel);
+      if (result.status === "at_capacity") {
+        try {
+          await message.reply("All handlers are busy. Please try again in a moment.");
+        } catch (err) {
+          this.logger.debug({ err }, "Failed to send at-capacity reply");
+        }
+        return;
+      }
+      if (result.status !== "found") return;
       try {
-        await handler.handleMessage(message);
+        await result.handler.handleMessage(message);
       } catch (err) {
         this.logger.error({ err, channelId: message.channelId }, "Error handling message");
       }
@@ -90,31 +84,38 @@ export class DiscordBot {
     this.client.on(Events.InteractionCreate, async (interaction: Interaction) => {
       try {
         if (interaction.isChatInputCommand()) {
-          const handler = this.resolveHandler(interaction.channelId, interaction.channel);
-          if (!handler) {
+          const result = await this.resolveHandler(interaction.channelId, interaction.channel);
+          if (result.status === "at_capacity") {
+            await interaction.reply({
+              content: "All handlers are busy. Please try again in a moment.",
+              ephemeral: true,
+            });
+            return;
+          }
+          if (result.status !== "found") {
             await interaction.reply({
               content: "This channel is not linked to a Disclaw project.",
               ephemeral: true,
             });
             return;
           }
-          if (!handler.hasChannel) {
+          if (!result.handler.hasChannel) {
             await interaction.reply({
               content: "Use this command inside a forum post, not in the forum channel itself.",
               ephemeral: true,
             });
             return;
           }
-          await handler.handleInteraction(interaction);
+          await result.handler.handleInteraction(interaction);
         } else if (interaction.isButton()) {
-          const handler = this.resolveHandler(interaction.channelId, interaction.channel);
-          if (handler) {
-            await handler.handleButtonInteraction(interaction);
+          const result = await this.resolveHandler(interaction.channelId, interaction.channel);
+          if (result.status === "found") {
+            await result.handler.handleButtonInteraction(interaction);
           }
         } else if (interaction.isStringSelectMenu()) {
-          const handler = this.resolveHandler(interaction.channelId, interaction.channel);
-          if (handler) {
-            await handler.handleSelectMenuInteraction(interaction);
+          const result = await this.resolveHandler(interaction.channelId, interaction.channel);
+          if (result.status === "found") {
+            await result.handler.handleSelectMenuInteraction(interaction);
           }
         }
       } catch (err) {
@@ -134,12 +135,12 @@ export class DiscordBot {
     });
 
     this.client.on(Events.ThreadDelete, async (thread) => {
-      await this.stopThreadHandler(thread.id);
+      await this.stopThreadHandler(thread.id, "delete");
     });
 
     this.client.on(Events.ThreadUpdate, async (oldThread, newThread) => {
       if (newThread.archived && !oldThread.archived) {
-        await this.stopThreadHandler(newThread.id);
+        await this.stopThreadHandler(newThread.id, "archive");
       }
     });
 
@@ -151,9 +152,7 @@ export class DiscordBot {
   private async joinActiveForumThreads(forum: ForumChannel, channelId: string): Promise<void> {
     try {
       const fetched = await forum.threads.fetchActive();
-      for (const thread of fetched.threads.values()) {
-        await thread.join().catch(() => {});
-      }
+      await Promise.all([...fetched.threads.values()].map((thread) => thread.join().catch(() => {})));
       if (fetched.threads.size > 0) {
         this.logger.info({ channelId, count: fetched.threads.size }, "Joined active forum threads");
       }
@@ -191,28 +190,9 @@ export class DiscordBot {
 
     // If client is already ready, resolve channel now
     if (this.client.isReady()) {
-      this.client.channels
-        .fetch(project.channelId)
-        .then(async (channel) => {
-          if (channel && channel.type === ChannelType.GuildText) {
-            handler.setChannel(channel as TextChannel);
-          } else if (channel && channel.type === ChannelType.GuildForum) {
-            this.logger.info(
-              { channelId: project.channelId, project: project.name },
-              "Forum channel registered (thread-only)",
-            );
-            handler.markReady(channel.name);
-            await this.joinActiveForumThreads(channel as ForumChannel, project.channelId);
-          } else {
-            this.logger.warn(
-              { channelId: project.channelId, project: project.name },
-              "Channel not found or not a supported channel type",
-            );
-          }
-        })
-        .catch((err) => {
-          this.logger.error({ err, project: project.name }, "Failed to fetch channel");
-        });
+      this.resolveChannelForHandler(project.channelId, handler).catch((err) => {
+        this.logger.error({ err, project: project.name }, "Failed to resolve channel");
+      });
     }
   }
 
@@ -227,12 +207,9 @@ export class DiscordBot {
     }
 
     // Stop all thread handlers belonging to this channel
-    for (const [threadId, threadHandler] of this.threadHandlers) {
-      if (threadHandler.channelId === channelId) {
-        await threadHandler.stop();
-        this.threadHandlers.delete(threadId);
-        this.threadLastActivity.delete(threadId);
-      }
+    const threadIds = [...this.threadHandlers.entries()].filter(([, h]) => h.channelId === channelId).map(([id]) => id);
+    for (const threadId of threadIds) {
+      await this.stopThreadHandler(threadId, "remove-project");
     }
   }
 
@@ -263,47 +240,67 @@ export class DiscordBot {
     return undefined;
   }
 
-  private resolveHandler(
+  private async resolveChannelForHandler(channelId: string, handler: ProjectHandler): Promise<void> {
+    try {
+      const channel = await this.client.channels.fetch(channelId);
+      if (channel && channel.type === ChannelType.GuildText) {
+        handler.setChannel(channel as TextChannel);
+      } else if (channel && channel.type === ChannelType.GuildForum) {
+        this.logger.info({ channelId, project: handler.projectName }, "Forum channel registered (thread-only)");
+        handler.markReady(channel.name);
+        await this.joinActiveForumThreads(channel as ForumChannel, channelId);
+      } else {
+        this.logger.warn(
+          { channelId, project: handler.projectName },
+          "Channel not found or not a supported channel type",
+        );
+      }
+    } catch (err) {
+      this.logger.error({ err, channelId, project: handler.projectName }, "Failed to fetch channel");
+    }
+  }
+
+  private async resolveHandler(
     channelId: string,
     channel?: { isThread(): boolean; parentId?: string | null } | null,
-  ): ProjectHandler | undefined {
+  ): Promise<ResolveResult> {
     // Direct channel match (parent channel messages)
     const direct = this.handlers.get(channelId);
-    if (direct) return direct;
+    if (direct) return { status: "found", handler: direct };
 
     // Existing thread handler
     const existing = this.threadHandlers.get(channelId);
     if (existing) {
       this.threadLastActivity.set(channelId, Date.now());
-      return existing;
+      return { status: "found", handler: existing };
     }
 
     // Create a new thread handler if the parent channel has a project
     if (channel?.isThread() && channel.parentId) {
       const parentHandler = this.handlers.get(channel.parentId);
       if (parentHandler) {
-        return this.createThreadHandler(channelId, channel as AnyThreadChannel, parentHandler) ?? undefined;
+        return this.createThreadHandler(channelId, channel as AnyThreadChannel, parentHandler);
       }
     }
 
-    return undefined;
+    return { status: "not_found" };
   }
 
-  private createThreadHandler(
+  private async createThreadHandler(
     threadId: string,
     thread: AnyThreadChannel,
     parentHandler: ProjectHandler,
-  ): ProjectHandler | null {
+  ): Promise<ResolveResult> {
     // Evict oldest idle handler if at capacity
     if (this.threadHandlers.size >= MAX_THREAD_HANDLERS) {
-      if (!this.evictOldestIdle()) {
+      if (!(await this.evictOldestIdle())) {
         this.logger.warn("All thread handlers busy, cannot create new handler");
-        return null;
+        return { status: "at_capacity" };
       }
     }
 
     const project = this.config.projects.find((p) => p.channelId === parentHandler.channelId);
-    if (!project) return null;
+    if (!project) return { status: "not_found" };
 
     const threadLogger = this.logger.child({ project: project.name, threadId, threadName: thread.name });
     const handler = new ProjectHandler(this.config, project, threadLogger, threadId);
@@ -316,10 +313,10 @@ export class DiscordBot {
       "Created thread handler",
     );
 
-    return handler;
+    return { status: "found", handler };
   }
 
-  private evictOldestIdle(): boolean {
+  private async evictOldestIdle(): Promise<boolean> {
     let oldestId: string | null = null;
     let oldestTime = Infinity;
 
@@ -334,17 +331,17 @@ export class DiscordBot {
     if (!oldestId) return false;
 
     this.logger.info({ evictedThreadId: oldestId }, "Evicting oldest idle thread handler");
-    const handler = this.threadHandlers.get(oldestId);
-    handler?.stop().catch((err) => this.logger.error({ err }, "Error stopping evicted handler"));
-    this.threadHandlers.delete(oldestId);
-    this.threadLastActivity.delete(oldestId);
+    await this.stopThreadHandler(oldestId, "evict");
     return true;
   }
 
-  private async stopThreadHandler(threadId: string): Promise<void> {
+  private async stopThreadHandler(threadId: string, reason: StopReason): Promise<void> {
     const handler = this.threadHandlers.get(threadId);
     if (handler) {
-      this.logger.info({ threadId }, "Thread removed/archived, stopping handler");
+      this.logger.info({ threadId, reason }, "Stopping thread handler");
+      if (reason === "delete") {
+        handler.clearSessionState();
+      }
       await handler.stop();
       this.threadHandlers.delete(threadId);
       this.threadLastActivity.delete(threadId);
@@ -358,12 +355,10 @@ export class DiscordBot {
 
   async stop(): Promise<void> {
     this.logger.info("Stopping Discord bot");
-    for (const handler of this.handlers.values()) {
-      await handler.stop();
-    }
-    for (const handler of this.threadHandlers.values()) {
-      await handler.stop();
-    }
+    await Promise.all([
+      ...[...this.handlers.values()].map((h) => h.stop()),
+      ...[...this.threadHandlers.values()].map((h) => h.stop()),
+    ]);
     this.handlers.clear();
     this.threadHandlers.clear();
     this.threadLastActivity.clear();

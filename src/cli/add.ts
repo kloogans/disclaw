@@ -177,19 +177,19 @@ export async function addCommand(pathArg: string): Promise<void> {
     done(`Project "${name}" registered.`);
 
     // Auto-start or hot-reload daemon
-    const spinner = new Spinner(isDaemonRunning() ? "Reloading daemon" : "Starting daemon");
+    const spinner = new Spinner(isDaemonRunning() ? "Reloading disclaw" : "Starting disclaw");
     spinner.start();
 
     if (isDaemonRunning()) {
       if (!signalDaemon("SIGHUP")) {
-        spinner.stop(`${c.yellow}⚠${c.reset} Failed to signal daemon, starting a new one...`);
+        spinner.stop(`${c.yellow}⚠${c.reset} Failed to reload, starting fresh...`);
         spawnDaemon();
       } else {
-        spinner.stop(`${c.green}✓${c.reset} Daemon reloaded`);
+        spinner.stop(`${c.green}✓${c.reset} disclaw reloaded`);
       }
     } else {
       spawnDaemon();
-      spinner.stop(`${c.green}✓${c.reset} Daemon started`);
+      spinner.stop(`${c.green}✓${c.reset} disclaw started`);
     }
 
     if (isForum) {
@@ -197,6 +197,7 @@ export async function addCommand(pathArg: string): Promise<void> {
     } else {
       console.log(`\n  Open Discord and send a message in the project channel.`);
     }
+    console.log(`  Happy clauding!`);
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === "ABORT_ERR") {
       console.log("\n");

@@ -585,6 +585,10 @@ export class ProjectHandler {
 
   // --- Lifecycle ---
 
+  clearSessionState(): void {
+    this.sessionManager.clearSessionState();
+  }
+
   async stop(): Promise<void> {
     this.logger.info({ project: this.project.name }, "Stopping handler");
     this.batcher.clear();

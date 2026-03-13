@@ -9,7 +9,7 @@
   <a href="https://github.com/kloogans/disclaw/blob/main/LICENSE"><img src="https://img.shields.io/npm/l/disclaw" alt="license"></a>
 </p>
 
-Remote Claude Code control via Discord. Run Claude as a daemon and interact with your projects from anywhere through Discord channels.
+Remote Claude Code control via Discord. Run Claude in the background and interact with your projects from anywhere through Discord channels.
 
 ---
 
@@ -42,7 +42,7 @@ Remote Claude Code control via Discord. Run Claude as a daemon and interact with
 
 ## How It Works
 
-disclaw runs a single daemon process with one [discord.js](https://discord.js.org/) client connected to your Discord server. Each registered project is mapped to a Discord channel — either a **text channel** or a **forum channel**. Messages are forwarded to the [Claude Agent SDK](https://github.com/anthropic-ai/claude-agent-sdk), which spawns Claude Code subprocesses scoped to the project directory.
+disclaw runs a single background process with one [discord.js](https://discord.js.org/) client connected to your Discord server. Each registered project is mapped to a Discord channel — either a **text channel** or a **forum channel**. Messages are forwarded to the [Claude Agent SDK](https://github.com/anthropic-ai/claude-agent-sdk), which spawns Claude Code subprocesses scoped to the project directory.
 
 Threads and forum posts each get their own independent Claude session with separate context, so you can run multiple parallel conversations per project. Thread handlers are created on first message and automatically cleaned up when threads are archived or deleted.
 
@@ -69,7 +69,7 @@ disclaw setup
 disclaw add ~/path/to/your/project
 ```
 
-The daemon starts after adding your first project. Open Discord, go to the project channel (or create a post in forum channels), and send a message.
+disclaw starts automatically after adding your first project. Open Discord, go to the project channel (or create a post in forum channels), and send a message.
 
 See [GETTING-STARTED.md](GETTING-STARTED.md) for a detailed walkthrough including Discord bot creation.
 
@@ -149,15 +149,15 @@ Any project entry can override `model`, `permissionMode`, and `allowedTools`:
 |---|---|
 | `disclaw setup` | First-time setup, configures Discord bot and server |
 | `disclaw add <path>` | Register a project (auto-creates a text or forum channel, or use existing) |
-| `disclaw start` | Start the daemon |
-| `disclaw stop` | Stop the daemon |
-| `disclaw restart` | Restart the daemon |
-| `disclaw status` | Show daemon status and project info |
+| `disclaw start` | Start disclaw |
+| `disclaw stop` | Stop disclaw |
+| `disclaw restart` | Restart disclaw |
+| `disclaw status` | Show status and project info |
 | `disclaw list` | List all registered projects with their settings |
 | `disclaw remove <name>` | Unregister a project |
 | `disclaw token-update` | Update the Discord bot token |
-| `disclaw logs [name]` | Tail logs (daemon by default, or a specific project) |
-| `disclaw doctor` | Health check for Node.js, config, auth, and daemon |
+| `disclaw logs [name]` | Tail logs (main process by default, or a specific project) |
+| `disclaw doctor` | Health check for Node.js, config, auth, and connectivity |
 | `disclaw install` | Install auto-start (systemd / LaunchAgent / Task Scheduler) |
 | `disclaw uninstall` | Remove auto-start |
 

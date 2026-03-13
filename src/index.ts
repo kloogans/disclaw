@@ -26,9 +26,9 @@ program
   .argument("<path>", "Path to the project directory")
   .action(addCommand);
 
-program.command("start").description("Start the daemon").action(startCommand);
+program.command("start").description("Start disclaw").action(startCommand);
 
-program.command("stop").description("Stop the daemon").action(stopCommand);
+program.command("stop").description("Stop disclaw").action(stopCommand);
 
 program
   .command("list")
@@ -53,7 +53,7 @@ program
 
 program
   .command("status")
-  .description("Show daemon and project statuses")
+  .description("Show status and project info")
   .action(async () => {
     const { isDaemonRunning, readPidFile } = await import("./config/state.js");
     const { loadConfig, configExists } = await import("./config/store.js");
@@ -65,9 +65,9 @@ program
     }
 
     if (isDaemonRunning()) {
-      console.log(`\nDaemon running (PID: ${readPidFile()})\n`);
+      console.log(`\ndisclaw running (PID: ${readPidFile()})\n`);
     } else {
-      console.log("\nDaemon not running. Run: disclaw start\n");
+      console.log("\ndisclaw not running. Run: disclaw start\n");
     }
 
     const config = loadConfig();
@@ -101,7 +101,7 @@ program
 
 program
   .command("restart")
-  .description("Restart the daemon")
+  .description("Restart disclaw")
   .action(async () => {
     await stopCommand();
     await startCommand();
@@ -122,7 +122,7 @@ program.command("token-update").description("Update the Discord bot token").acti
 program
   .command("logs")
   .description("Tail logs (all or specific project)")
-  .argument("[name]", "Project name (optional, defaults to daemon)")
+  .argument("[name]", "Project name (optional, defaults to main process)")
   .option("-n, --lines <count>", "Number of lines to show", "50")
   .action(logsCommand);
 
