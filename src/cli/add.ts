@@ -4,10 +4,10 @@ import { existsSync, realpathSync, statSync } from "node:fs";
 import { resolve, basename } from "node:path";
 import { loadConfig, saveConfig, addProject, configExists } from "../config/store.js";
 import { isDaemonRunning, signalDaemon } from "../config/state.js";
-import { pollForBotConnected } from "./log-poller.js";
+import { captureLogOffsets, pollForBotConnected } from "./log-poller.js";
 import { spawnDaemon } from "./spawn-daemon.js";
 import type { ProjectConfig } from "../config/types.js";
-import { step, hint, success, fail, done, c, Spinner } from "./ui.js";
+import { step, hint, fail, done, c, Spinner } from "./ui.js";
 
 export async function addCommand(pathArg: string): Promise<void> {
   if (!configExists()) {
@@ -66,7 +66,20 @@ export async function addCommand(pathArg: string): Promise<void> {
 
     const choice = (await rl.question(`  ${c.bold}Choice${c.reset} ${c.dim}(1):${c.reset} `)).trim() || "1";
 
+    let isForum = false;
+
     if (choice === "1") {
+      // Ask for channel type
+      console.log();
+      hint("a. Text channel — messages go directly in the channel");
+      hint("b. Forum channel — each conversation becomes a post/thread");
+      console.log();
+
+      const typeChoice =
+        (await rl.question(`  ${c.bold}Channel type${c.reset} ${c.dim}(a):${c.reset} `)).trim().toLowerCase() || "a";
+      isForum = typeChoice === "b";
+      const channelType = isForum ? 15 : 0; // 15 = GuildForum, 0 = GuildText
+
       // Auto-create channel via Discord REST API
       const channelName = `disclaw-${name}`
         .toLowerCase()
@@ -85,7 +98,7 @@ export async function addCommand(pathArg: string): Promise<void> {
           },
           body: JSON.stringify({
             name: channelName,
-            type: 0, // GUILD_TEXT
+            type: channelType,
             topic: `Disclaw: ${name} — ${realPath}`,
           }),
         });
@@ -119,7 +132,31 @@ export async function addCommand(pathArg: string): Promise<void> {
         fail("Invalid channel ID — must be a numeric snowflake.");
         return;
       }
-      success("Valid channel ID");
+
+      // Detect channel type via Discord API
+      const detectSpinner = new Spinner("Detecting channel type");
+      detectSpinner.start();
+      try {
+        const res = await fetch(`https://discord.com/api/v10/channels/${channelId}`, {
+          headers: { Authorization: `Bot ${config.discordBotToken}` },
+        });
+        if (res.ok) {
+          const data = (await res.json()) as { type?: number };
+          if (data.type === 15) {
+            isForum = true;
+            detectSpinner.stop(`${c.green}✓${c.reset} Detected forum channel`);
+          } else if (data.type === 0) {
+            isForum = false;
+            detectSpinner.stop(`${c.green}✓${c.reset} Detected text channel`);
+          } else {
+            detectSpinner.stop(`${c.yellow}⚠${c.reset} Unexpected channel type (${data.type}), treating as text`);
+          }
+        } else {
+          detectSpinner.stop(`${c.yellow}⚠${c.reset} Could not fetch channel (${res.status}), treating as text`);
+        }
+      } catch {
+        detectSpinner.stop(`${c.yellow}⚠${c.reset} Could not reach Discord API, treating as text`);
+      }
     }
 
     // Check for duplicate channel
@@ -132,12 +169,16 @@ export async function addCommand(pathArg: string): Promise<void> {
       name,
       path: realPath,
       channelId,
+      channelType: isForum ? "forum" : "text",
     };
 
     const updatedConfig = addProject(config, project);
     saveConfig(updatedConfig);
 
     done(`Project "${name}" registered.`);
+
+    // Capture log offsets BEFORE spawn/reload so we only see new handler_ready events
+    const logOffsets = captureLogOffsets([name]);
 
     // Auto-start or hot-reload daemon
     const spinner = new Spinner(isDaemonRunning() ? "Reloading daemon" : "Starting daemon");
@@ -153,7 +194,7 @@ export async function addCommand(pathArg: string): Promise<void> {
     }
 
     // Poll for connectivity
-    const { connected } = await pollForBotConnected([name], 5000);
+    const { connected } = await pollForBotConnected([name], 5000, logOffsets);
     if (connected.length > 0) {
       spinner.stop(`${c.green}✓${c.reset} Connected`);
     } else {
@@ -161,7 +202,11 @@ export async function addCommand(pathArg: string): Promise<void> {
       hint(`Check: disclaw logs ${name}`);
     }
 
-    console.log(`\n  Open Discord and send a message in the project channel.`);
+    if (isForum) {
+      console.log(`\n  Open Discord and create a post in the forum channel.`);
+    } else {
+      console.log(`\n  Open Discord and send a message in the project channel.`);
+    }
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === "ABORT_ERR") {
       console.log("\n");

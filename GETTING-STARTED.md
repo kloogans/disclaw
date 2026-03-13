@@ -61,8 +61,16 @@ This asks for:
 
 - **Project name** - press Enter to use the directory name
 - **Channel setup** - choose to auto-create a new channel (recommended) or enter an existing channel ID
+- **Channel type** (if auto-creating) - **text** for direct messaging, or **forum** for thread-based conversations
+
+If you use an existing channel ID, the channel type is auto-detected.
 
 The daemon starts automatically and confirms the bot is connected to Discord.
+
+### Text vs Forum channels
+
+- **Text channel** — messages go directly in the channel. Simple, great for a single ongoing conversation per project.
+- **Forum channel** — each conversation is a separate post/thread. Great for organizing multiple tasks, bug reports, or features per project. Each thread gets its own independent Claude session.
 
 ### Adding more projects
 
@@ -73,7 +81,7 @@ Repeat this step for each project. Each project gets its own channel. If the dae
 ## Step 4: Open Discord and start coding
 
 1. Open Discord (desktop or mobile)
-2. Go to the channel created for your project
+2. Go to the channel created for your project (or create a new post if using a forum channel)
 3. Send a message like: "What does this project do?"
 4. You'll see "Working..." then Claude's response
 

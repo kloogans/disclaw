@@ -1,6 +1,6 @@
 import { isDaemonRunning, readPidFile } from "../config/state.js";
 import { loadConfig, configExists } from "../config/store.js";
-import { pollForBotConnected } from "./log-poller.js";
+import { captureLogOffsets, pollForBotConnected } from "./log-poller.js";
 import { spawnDaemon } from "./spawn-daemon.js";
 import { banner, success, fail, warn, c } from "./ui.js";
 
@@ -25,6 +25,10 @@ export async function startCommand(): Promise<void> {
 
   banner("starting");
 
+  // Capture log offsets BEFORE spawning so we only see new handler_ready events
+  const projectNames = config.projects.map((p) => p.name);
+  const logOffsets = captureLogOffsets(projectNames);
+
   const pid = spawnDaemon();
 
   if (!pid) {
@@ -35,8 +39,7 @@ export async function startCommand(): Promise<void> {
   console.log(`  Daemon started ${c.dim}(PID: ${pid})${c.reset}\n`);
 
   // Poll for bot connectivity
-  const projectNames = config.projects.map((p) => p.name);
-  const { connected, pending } = await pollForBotConnected(projectNames, 15000);
+  const { connected, pending } = await pollForBotConnected(projectNames, 15000, logOffsets);
 
   for (const bot of connected) {
     const username = bot.username ? ` ${c.dim}— @${bot.username}${c.reset}` : "";

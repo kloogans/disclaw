@@ -1,5 +1,7 @@
-import type { TextChannel } from "discord.js";
+import type { TextChannel, AnyThreadChannel } from "discord.js";
 import type pino from "pino";
+
+type SendableChannel = TextChannel | AnyThreadChannel;
 
 const MAX_STREAM_BUFFER = 100_000;
 const DISCORD_PREVIEW_LIMIT = 1900;
@@ -20,7 +22,7 @@ export class StreamManager {
     this.logger = logger;
   }
 
-  startTyping(channel: TextChannel): void {
+  startTyping(channel: SendableChannel): void {
     this.stopTyping();
     // Send immediately, then every 9 seconds (Discord typing lasts 10s)
     channel.sendTyping().catch((e) => this.logger.debug(e, "sendTyping failed"));
@@ -60,7 +62,7 @@ export class StreamManager {
     }
   }
 
-  async flush(channel: TextChannel, statusMessageId: string): Promise<void> {
+  async flush(channel: SendableChannel, statusMessageId: string): Promise<void> {
     if (this.isFlushingStream) return;
     this.isFlushingStream = true;
 

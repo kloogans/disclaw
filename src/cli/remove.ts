@@ -12,9 +12,14 @@ export async function removeCommand(name: string): Promise<void> {
 
   saveConfig(removeProject(config, name));
 
-  // Clean up stale session state
+  // Clean up stale session state (including thread sessions)
   const state = loadState();
   delete state.sessions[name];
+  for (const key of Object.keys(state.sessions)) {
+    if (key.startsWith(`${name}/`)) {
+      delete state.sessions[key];
+    }
+  }
   saveState(state);
 
   success(`Project "${name}" removed.`);

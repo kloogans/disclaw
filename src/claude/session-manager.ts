@@ -64,12 +64,24 @@ export class SessionManager {
   private sessionAllowedTools = new Set<string>();
   private sessionPermissionMode: PermissionMode | null = null;
   private sessionModel: string | null = null;
+  private threadId: string | undefined;
 
-  constructor(project: ProjectConfig, config: AppConfig, logger: pino.Logger, callbacks: SessionCallbacks) {
+  constructor(
+    project: ProjectConfig,
+    config: AppConfig,
+    logger: pino.Logger,
+    callbacks: SessionCallbacks,
+    threadId?: string,
+  ) {
     this.project = project;
     this.config = config;
     this.logger = logger;
     this.callbacks = callbacks;
+    this.threadId = threadId;
+  }
+
+  private get sessionKey(): string {
+    return this.threadId ? `${this.project.name}/${this.threadId}` : this.project.name;
   }
 
   get currentSessionId(): string | null {
@@ -98,7 +110,7 @@ export class SessionManager {
 
     this.abortController = new AbortController();
 
-    const resumeValue = resumeId || getLastSessionId(this.project.name);
+    const resumeValue = resumeId || getLastSessionId(this.sessionKey);
     const resume = resumeValue && resumeValue.length > 0 ? resumeValue : undefined;
 
     this.currentQuery = query({
@@ -156,7 +168,7 @@ export class SessionManager {
   private handleMessage(message: SDKMessage): void {
     if (isSystemInit(message)) {
       this._currentSessionId = message.session_id;
-      saveSessionId(this.project.name, message.session_id);
+      saveSessionId(this.sessionKey, message.session_id);
       this.callbacks.onSessionId(message.session_id);
       this.logger.info({ sessionId: message.session_id }, "Session initialized");
     } else if (isSystemStatus(message)) {
@@ -215,7 +227,7 @@ export class SessionManager {
     this.sessionAllowedTools.clear();
     this.sessionPermissionMode = null;
     this.sessionModel = null;
-    saveSessionId(this.project.name, "");
+    saveSessionId(this.sessionKey, "");
     this.logger.info("New session requested");
   }
 

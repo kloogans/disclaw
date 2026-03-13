@@ -44,7 +44,7 @@ program
     for (const p of config.projects) {
       console.log(`  ${p.name}`);
       console.log(`    Path: ${p.path}`);
-      console.log(`    Channel: ${p.channelId}`);
+      console.log(`    Channel: ${p.channelId} (${p.channelType ?? "text"})`);
       console.log(`    Model: ${p.model ?? config.defaults.model}`);
       console.log(`    Mode: ${p.permissionMode ?? config.defaults.permissionMode}`);
       console.log("");
@@ -93,7 +93,8 @@ program
     for (const p of config.projects) {
       const model = p.model ?? config.defaults.model;
       const mode = p.permissionMode ?? config.defaults.permissionMode;
-      console.log(`  ${p.name} — channel ${p.channelId} (${model}, ${mode} mode)`);
+      const type = p.channelType ?? "text";
+      console.log(`  ${p.name} — ${type} channel ${p.channelId} (${model}, ${mode} mode)`);
     }
     console.log(`\n${config.projects.length} project(s) registered.`);
   });

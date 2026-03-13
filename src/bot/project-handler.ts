@@ -1,15 +1,18 @@
 import {
   type Message,
-  type TextChannel,
   type ButtonInteraction,
   type StringSelectMenuInteraction,
   type ChatInputCommandInteraction,
+  type TextChannel,
+  type AnyThreadChannel,
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
   AttachmentBuilder,
 } from "discord.js";
 import type { AppConfig, ProjectConfig } from "../config/types.js";
+
+type SendableChannel = TextChannel | AnyThreadChannel;
 import { handleSlashCommand, isAuthorized, type CommandCallbacks } from "./commands.js";
 import { formatForDiscord, formatToolUse, escapeMarkdown } from "./formatting.js";
 import { chunkMessage } from "../utils/chunker.js";
@@ -34,7 +37,7 @@ export class ProjectHandler {
   private project: ProjectConfig;
   private logger: pino.Logger;
   private sessionManager: SessionManager;
-  private channel: TextChannel | null = null;
+  private channel: SendableChannel | null = null;
   private statusMessageId: string | null = null;
   private batcher: MessageBatcher;
   private isProcessing = false;
@@ -56,7 +59,7 @@ export class ProjectHandler {
   >();
   private suggestionCallbacks = new Map<string, string>();
 
-  constructor(config: AppConfig, project: ProjectConfig, logger: pino.Logger) {
+  constructor(config: AppConfig, project: ProjectConfig, logger: pino.Logger, threadId?: string) {
     this.config = config;
     this.project = project;
     this.logger = logger;
@@ -65,31 +68,37 @@ export class ProjectHandler {
     this.git = new GitHelper(project.path, project.name, logger);
     this.usage = new UsageTracker();
 
-    this.sessionManager = new SessionManager(project, config, logger, {
-      onAssistantMessage: (_text: string) => {},
-      onStreamDelta: (text: string) => this.stream.handleStreamDelta(text),
-      onThinkingDelta: (text: string) => this.stream.handleThinkingDelta(text),
-      onToolUse: (toolName: string, input: Record<string, unknown>) => this.handleToolUse(toolName, input),
-      onToolProgress: (toolName: string, elapsed: number) => this.handleToolProgress(toolName, elapsed),
-      onTaskStarted: (taskId: string, prompt: string) => this.handleTaskStarted(taskId, prompt),
-      onTaskNotification: (taskId: string, status: string, summary: string) =>
-        this.handleTaskNotification(taskId, status, summary),
-      onRateLimit: (status: string, resetsAt: number | null) => this.handleRateLimit(status, resetsAt),
-      onCompacting: (isCompacting: boolean) => this.handleCompacting(isCompacting),
-      onPromptSuggestion: (suggestion: string) => {
-        this.lastPromptSuggestion = suggestion;
+    this.sessionManager = new SessionManager(
+      project,
+      config,
+      logger,
+      {
+        onAssistantMessage: (_text: string) => {},
+        onStreamDelta: (text: string) => this.stream.handleStreamDelta(text),
+        onThinkingDelta: (text: string) => this.stream.handleThinkingDelta(text),
+        onToolUse: (toolName: string, input: Record<string, unknown>) => this.handleToolUse(toolName, input),
+        onToolProgress: (toolName: string, elapsed: number) => this.handleToolProgress(toolName, elapsed),
+        onTaskStarted: (taskId: string, prompt: string) => this.handleTaskStarted(taskId, prompt),
+        onTaskNotification: (taskId: string, status: string, summary: string) =>
+          this.handleTaskNotification(taskId, status, summary),
+        onRateLimit: (status: string, resetsAt: number | null) => this.handleRateLimit(status, resetsAt),
+        onCompacting: (isCompacting: boolean) => this.handleCompacting(isCompacting),
+        onPromptSuggestion: (suggestion: string) => {
+          this.lastPromptSuggestion = suggestion;
+        },
+        onResult: (result: string, costUsd: number, usage: TokenUsage | null) =>
+          this.handleResult(result, costUsd, usage),
+        onError: (error: string) => this.handleError(error),
+        onStreamEnd: () => this.handleStreamEnd(),
+        onSessionId: (_sessionId: string) => {},
+        onPermissionRequest: (
+          toolName: string,
+          input: Record<string, unknown>,
+          respond: (result: SDKPermissionResult) => void,
+        ) => this.handlePermissionRequest(toolName, input, respond),
       },
-      onResult: (result: string, costUsd: number, usage: TokenUsage | null) =>
-        this.handleResult(result, costUsd, usage),
-      onError: (error: string) => this.handleError(error),
-      onStreamEnd: () => this.handleStreamEnd(),
-      onSessionId: (_sessionId: string) => {},
-      onPermissionRequest: (
-        toolName: string,
-        input: Record<string, unknown>,
-        respond: (result: SDKPermissionResult) => void,
-      ) => this.handlePermissionRequest(toolName, input, respond),
-    });
+      threadId,
+    );
 
     this.batcher = new MessageBatcher((combined) => this.processMessage(combined), config.messageBatchDelayMs);
   }
@@ -110,11 +119,27 @@ export class ProjectHandler {
     }
   }
 
-  setChannel(channel: TextChannel): void {
+  get processing(): boolean {
+    return this.isProcessing;
+  }
+
+  get hasChannel(): boolean {
+    return this.channel !== null;
+  }
+
+  setChannel(channel: SendableChannel): void {
     this.channel = channel;
     this.logger.info(
       { event: "handler_ready", project: this.project.name, channel: channel.name },
       "Project handler ready",
+    );
+  }
+
+  /** Emit handler_ready for forum channels where setChannel is never called on the parent. */
+  markReady(channelName: string): void {
+    this.logger.info(
+      { event: "handler_ready", project: this.project.name, channel: channelName },
+      "Project handler ready (forum)",
     );
   }
 

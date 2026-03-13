@@ -31,6 +31,25 @@ export function getLastSessionId(projectName: string): string | undefined {
   return state.sessions[projectName];
 }
 
+export function saveThreadSessionId(projectName: string, threadId: string, sessionId: string): void {
+  saveSessionId(`${projectName}/${threadId}`, sessionId);
+}
+
+export function getLastThreadSessionId(projectName: string, threadId: string): string | undefined {
+  return getLastSessionId(`${projectName}/${threadId}`);
+}
+
+export function clearThreadSessions(projectName: string): void {
+  const state = loadState();
+  const prefix = `${projectName}/`;
+  for (const key of Object.keys(state.sessions)) {
+    if (key.startsWith(prefix)) {
+      delete state.sessions[key];
+    }
+  }
+  saveState(state);
+}
+
 export function writePidFile(): void {
   ensureConfigDir();
   writeFileSync(PID_PATH, process.pid.toString(), "utf-8");
