@@ -1,6 +1,6 @@
 {
   "name": "disclaw",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Remote Claude Code control via Discord",
   "type": "module",
   "bin": {
