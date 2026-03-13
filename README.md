@@ -16,7 +16,8 @@ Remote Claude Code control via Discord. Run Claude as a daemon and interact with
 ## Features
 
 - **One channel per project** - each project gets its own Discord channel (text or forum) with an independent Claude session
-- **Forum channel support** - use forum channels so each conversation becomes its own post/thread with isolated context
+- **Thread support** - create Discord threads for parallel conversations, each with its own independent Claude session and context
+- **Forum channels** - use forum channels where every conversation is a post/thread — great for organizing tasks, bugs, and features
 - **Images and documents** - send screenshots, photos, or files for Claude to analyze
 - **Permission approval via buttons** - approve, always-approve, or deny tool usage with Discord buttons
 - **Slash commands** - Discord-native command interface with autocomplete
@@ -41,14 +42,16 @@ Remote Claude Code control via Discord. Run Claude as a daemon and interact with
 
 ## How It Works
 
-disclaw runs a single daemon process with one [discord.js](https://discord.js.org/) client connected to your Discord server. Each registered project is mapped to a Discord channel — either a **text channel** (direct messaging) or a **forum channel** (each conversation is a separate post/thread). Messages are forwarded to the [Claude Agent SDK](https://github.com/anthropic-ai/claude-agent-sdk), which spawns Claude Code subprocesses scoped to the project directory.
+disclaw runs a single daemon process with one [discord.js](https://discord.js.org/) client connected to your Discord server. Each registered project is mapped to a Discord channel — either a **text channel** or a **forum channel**. Messages are forwarded to the [Claude Agent SDK](https://github.com/anthropic-ai/claude-agent-sdk), which spawns Claude Code subprocesses scoped to the project directory.
+
+Threads and forum posts each get their own independent Claude session with separate context, so you can run multiple parallel conversations per project. Thread handlers are created on first message and automatically cleaned up when threads are archived or deleted.
 
 Images and documents are downloaded to a temporary media directory and passed to Claude as file references, with automatic cleanup after 24 hours.
 
 ```
-Discord --> discord.js client --> Claude Agent SDK --> Claude Code subprocess
-                                                           |
-                                                    (project directory)
+Discord channel/thread --> discord.js client --> Claude Agent SDK --> Claude Code subprocess
+                                                                           |
+                                                                    (project directory)
 ```
 
 ---
@@ -162,7 +165,7 @@ Any project entry can override `model`, `permissionMode`, and `allowedTools`:
 
 ## Discord Slash Commands
 
-These commands are available in any project channel or forum post:
+These commands are available in any project channel, thread, or forum post:
 
 | Command | Description |
 |---|---|
@@ -199,8 +202,8 @@ These commands are available in any project channel or forum post:
 ```
 src/
 ├── bot/              # Discord bot layer
-│   ├── discord-client.ts   # Discord.js client, event routing
-│   ├── project-handler.ts  # Per-project orchestrator
+│   ├── discord-client.ts   # Discord.js client, event routing, thread lifecycle
+│   ├── project-handler.ts  # Per-channel/thread orchestrator
 │   ├── stream-manager.ts   # Typing indicators, stream previews
 │   ├── git-helpers.ts      # Git operations (diff, undo, status)
 │   ├── usage-tracker.ts    # Cost and token tracking

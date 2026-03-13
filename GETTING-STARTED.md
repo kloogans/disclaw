@@ -69,8 +69,8 @@ The daemon starts automatically and confirms the bot is connected to Discord.
 
 ### Text vs Forum channels
 
-- **Text channel** — messages go directly in the channel. Simple, great for a single ongoing conversation per project.
-- **Forum channel** — each conversation is a separate post/thread. Great for organizing multiple tasks, bug reports, or features per project. Each thread gets its own independent Claude session.
+- **Text channel** — messages go directly in the channel. You can also create threads for parallel conversations — each thread gets its own independent Claude session.
+- **Forum channel** — every conversation is a post/thread. Great for organizing multiple tasks, bugs, or features per project. Each post gets its own independent Claude session.
 
 ### Adding more projects
 
@@ -93,6 +93,9 @@ Repeat this step for each project. Each project gets its own channel. If the dae
 
 ### Text messages
 Just type normally. Claude sees your full project and works on it.
+
+### Threads
+Create a thread in any text channel or post in a forum channel. Each thread gets its own independent Claude session with separate context — perfect for working on multiple tasks in parallel without them interfering with each other. Threads are automatically managed: Claude joins new threads, and sessions are cleaned up when threads are archived or deleted.
 
 ### Images
 Send a screenshot or photo. Claude can see and analyze it.
