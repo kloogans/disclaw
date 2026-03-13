@@ -2,6 +2,7 @@ export interface ProjectConfig {
   name: string;
   path: string;
   channelId: string;
+  channelType?: "text" | "forum";
   model?: string;
   permissionMode?: PermissionMode;
   allowedTools?: string[];

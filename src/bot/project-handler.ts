@@ -123,11 +123,23 @@ export class ProjectHandler {
     return this.isProcessing;
   }
 
+  get hasChannel(): boolean {
+    return this.channel !== null;
+  }
+
   setChannel(channel: SendableChannel): void {
     this.channel = channel;
     this.logger.info(
       { event: "handler_ready", project: this.project.name, channel: channel.name },
       "Project handler ready",
+    );
+  }
+
+  /** Emit handler_ready for forum channels where setChannel is never called on the parent. */
+  markReady(channelName: string): void {
+    this.logger.info(
+      { event: "handler_ready", project: this.project.name, channel: channelName },
+      "Project handler ready (forum)",
     );
   }
 

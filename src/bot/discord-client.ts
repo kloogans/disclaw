@@ -3,6 +3,7 @@ import {
   Events,
   GatewayIntentBits,
   type TextChannel,
+  type ForumChannel,
   type AnyThreadChannel,
   type Interaction,
   ChannelType,
@@ -49,8 +50,17 @@ export class DiscordBot {
           const channel = await this.client.channels.fetch(channelId);
           if (channel && channel.type === ChannelType.GuildText) {
             handler.setChannel(channel as TextChannel);
+          } else if (channel && channel.type === ChannelType.GuildForum) {
+            // Forum channels are thread-only — the parent handler keeps channel=null.
+            // All messages arrive via forum post threads handled by resolveHandler → createThreadHandler.
+            this.logger.info({ channelId, project: handler.projectName }, "Forum channel registered (thread-only)");
+            handler.markReady(channel.name);
+            await this.joinActiveForumThreads(channel as ForumChannel, channelId);
           } else {
-            this.logger.warn({ channelId, project: handler.projectName }, "Channel not found or not a text channel");
+            this.logger.warn(
+              { channelId, project: handler.projectName },
+              "Channel not found or not a supported channel type",
+            );
           }
         } catch (err) {
           this.logger.error({ err, channelId, project: handler.projectName }, "Failed to fetch channel");
@@ -61,7 +71,12 @@ export class DiscordBot {
     // Route messages to the correct handler by channel
     this.client.on(Events.MessageCreate, async (message) => {
       if (message.author.bot) return;
-      if (message.type !== MessageType.Default && message.type !== MessageType.Reply) return;
+      if (
+        message.type !== MessageType.Default &&
+        message.type !== MessageType.Reply &&
+        message.type !== MessageType.ThreadStarterMessage
+      )
+        return;
       const handler = this.resolveHandler(message.channelId, message.channel);
       if (!handler) return;
       try {
@@ -79,6 +94,13 @@ export class DiscordBot {
           if (!handler) {
             await interaction.reply({
               content: "This channel is not linked to a Disclaw project.",
+              ephemeral: true,
+            });
+            return;
+          }
+          if (!handler.hasChannel) {
+            await interaction.reply({
+              content: "Use this command inside a forum post, not in the forum channel itself.",
               ephemeral: true,
             });
             return;
@@ -126,6 +148,20 @@ export class DiscordBot {
     });
   }
 
+  private async joinActiveForumThreads(forum: ForumChannel, channelId: string): Promise<void> {
+    try {
+      const fetched = await forum.threads.fetchActive();
+      for (const thread of fetched.threads.values()) {
+        await thread.join().catch(() => {});
+      }
+      if (fetched.threads.size > 0) {
+        this.logger.info({ channelId, count: fetched.threads.size }, "Joined active forum threads");
+      }
+    } catch (err) {
+      this.logger.debug({ err, channelId }, "Failed to fetch active forum threads");
+    }
+  }
+
   private async registerSlashCommands(): Promise<void> {
     if (!this.client.application) return;
 
@@ -157,13 +193,20 @@ export class DiscordBot {
     if (this.client.isReady()) {
       this.client.channels
         .fetch(project.channelId)
-        .then((channel) => {
+        .then(async (channel) => {
           if (channel && channel.type === ChannelType.GuildText) {
             handler.setChannel(channel as TextChannel);
+          } else if (channel && channel.type === ChannelType.GuildForum) {
+            this.logger.info(
+              { channelId: project.channelId, project: project.name },
+              "Forum channel registered (thread-only)",
+            );
+            handler.markReady(channel.name);
+            await this.joinActiveForumThreads(channel as ForumChannel, project.channelId);
           } else {
             this.logger.warn(
               { channelId: project.channelId, project: project.name },
-              "Channel not found or not a text channel",
+              "Channel not found or not a supported channel type",
             );
           }
         })
