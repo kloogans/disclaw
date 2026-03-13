@@ -15,7 +15,8 @@ Remote Claude Code control via Discord. Run Claude as a daemon and interact with
 
 ## Features
 
-- **One channel per project** - each project gets its own Discord channel with an independent Claude session
+- **One channel per project** - each project gets its own Discord channel (text or forum) with an independent Claude session
+- **Forum channel support** - use forum channels so each conversation becomes its own post/thread with isolated context
 - **Images and documents** - send screenshots, photos, or files for Claude to analyze
 - **Permission approval via buttons** - approve, always-approve, or deny tool usage with Discord buttons
 - **Slash commands** - Discord-native command interface with autocomplete
@@ -40,7 +41,7 @@ Remote Claude Code control via Discord. Run Claude as a daemon and interact with
 
 ## How It Works
 
-disclaw runs a single daemon process with one [discord.js](https://discord.js.org/) client connected to your Discord server. Each registered project is mapped to a Discord channel. Messages in a project's channel are forwarded to the [Claude Agent SDK](https://github.com/anthropic-ai/claude-agent-sdk), which spawns Claude Code subprocesses scoped to the project directory.
+disclaw runs a single daemon process with one [discord.js](https://discord.js.org/) client connected to your Discord server. Each registered project is mapped to a Discord channel — either a **text channel** (direct messaging) or a **forum channel** (each conversation is a separate post/thread). Messages are forwarded to the [Claude Agent SDK](https://github.com/anthropic-ai/claude-agent-sdk), which spawns Claude Code subprocesses scoped to the project directory.
 
 Images and documents are downloaded to a temporary media directory and passed to Claude as file references, with automatic cleanup after 24 hours.
 
@@ -65,7 +66,7 @@ disclaw setup
 disclaw add ~/path/to/your/project
 ```
 
-The daemon starts after adding your first project. Open Discord, go to the project channel, and send a message.
+The daemon starts after adding your first project. Open Discord, go to the project channel (or create a post in forum channels), and send a message.
 
 See [GETTING-STARTED.md](GETTING-STARTED.md) for a detailed walkthrough including Discord bot creation.
 
@@ -96,7 +97,8 @@ After running `disclaw setup`, the config file lives at `~/.disclaw/config.json`
     {
       "name": "my-saas",
       "path": "/path/to/my-saas",
-      "channelId": "123456789012345678"
+      "channelId": "123456789012345678",
+      "channelType": "text"
     }
   ]
 }
@@ -129,6 +131,7 @@ Any project entry can override `model`, `permissionMode`, and `allowedTools`:
   "name": "my-saas",
   "path": "/path/to/my-saas",
   "channelId": "123456789012345678",
+  "channelType": "forum",
   "model": "opus",
   "permissionMode": "acceptEdits",
   "allowedTools": ["Read", "Edit", "Bash", "Glob", "Grep"]
@@ -142,7 +145,7 @@ Any project entry can override `model`, `permissionMode`, and `allowedTools`:
 | Command | Description |
 |---|---|
 | `disclaw setup` | First-time setup, configures Discord bot and server |
-| `disclaw add <path>` | Register a project (auto-creates a Discord channel or use existing) |
+| `disclaw add <path>` | Register a project (auto-creates a text or forum channel, or use existing) |
 | `disclaw start` | Start the daemon |
 | `disclaw stop` | Stop the daemon |
 | `disclaw restart` | Restart the daemon |
@@ -159,7 +162,7 @@ Any project entry can override `model`, `permissionMode`, and `allowedTools`:
 
 ## Discord Slash Commands
 
-These commands are available in any project channel:
+These commands are available in any project channel or forum post:
 
 | Command | Description |
 |---|---|
