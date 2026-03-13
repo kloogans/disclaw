@@ -113,7 +113,7 @@ export async function handleSlashCommand(
 
     case "new": {
       callbacks.onNew();
-      await interaction.reply("\uD83C\uDD95 Starting fresh session...");
+      await interaction.reply("Session reset. Send a message to start a new session.");
       return true;
     }
 

@@ -43,6 +43,7 @@ export class ProjectHandler {
   private isProcessing = false;
   private pendingQueue: string[] = [];
   private lastPromptSuggestion: string | null = null;
+  private sessionPinned = false;
 
   private stream: StreamManager;
   private git: GitHelper;
@@ -90,7 +91,9 @@ export class ProjectHandler {
           this.handleResult(result, costUsd, usage),
         onError: (error: string) => this.handleError(error),
         onStreamEnd: () => this.handleStreamEnd(),
-        onSessionId: (_sessionId: string) => {},
+        onSessionId: () => {
+          this.sessionPinned = false;
+        },
         onPermissionRequest: (
           toolName: string,
           input: Record<string, unknown>,
@@ -402,36 +405,33 @@ export class ProjectHandler {
     const secretWarning = scanForSecrets(result);
     const safeResult = secretWarning ? redactSecrets(result) : result;
 
-    let lastMessage: Message | undefined;
+    const footer = usageData ? `\n${this.usage.getUsageFooter(usageData)}` : "";
 
     if (safeResult.length > this.config.maxResponseChars) {
       const buffer = Buffer.from(safeResult, "utf-8");
       const attachment = new AttachmentBuilder(buffer, { name: "response.md" });
-      lastMessage = await this.channel.send({
-        content: `Response too long for chat (${safeResult.length} chars). Sent as file.`,
-        files: [attachment],
-      });
+      const content = `Response too long for chat (${safeResult.length} chars). Sent as file.${footer}`;
+      await this.channel.send({ content, files: [attachment] });
     } else {
       const formatted = formatForDiscord(safeResult);
       const chunks = chunkMessage(formatted);
-      for (const chunk of chunks) {
-        lastMessage = await this.channel.send(chunk);
+      for (let i = 0; i < chunks.length; i++) {
+        const isLast = i === chunks.length - 1;
+        await this.channel.send(isLast ? chunks[i] + footer : chunks[i]);
       }
     }
 
-    if (lastMessage) {
+    // Pin session ID once at the start of each session
+    if (!this.sessionPinned && this.sessionManager.currentSessionId) {
+      this.sessionPinned = true;
       try {
-        await lastMessage.pin();
+        const pinMsg = await this.channel.send(`new session \`${this.sessionManager.currentSessionId}\``);
+        await pinMsg.pin();
       } catch {}
     }
 
     if (secretWarning) {
       await this.channel.send(secretWarning);
-    }
-
-    if (usageData) {
-      const footer = this.usage.getUsageFooter(usageData);
-      await this.channel.send(footer);
     }
 
     // Show prompt suggestion as a tappable button

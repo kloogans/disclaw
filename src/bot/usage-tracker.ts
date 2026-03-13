@@ -26,7 +26,7 @@ export class UsageTracker {
     return String(tokens);
   }
 
-  /** Per-turn usage footer for Discord. */
+  /** Per-turn usage footer for Discord — rendered as a dim code block. */
   getUsageFooter(usage: TokenUsage): string {
     const parts: string[] = [
       `${this.formatTokenCount(usage.inputTokens)} in`,
@@ -39,12 +39,12 @@ export class UsageTracker {
     if (this.lastContextWindow > 0) {
       const usedPct = Math.round((usage.inputTokens / this.lastContextWindow) * 100);
       if (usedPct >= 80) {
-        return `\u26A0\uFE0F ${parts.join(" \u00B7 ")} \u00B7 **ctx ${usedPct}%** \u2014 consider /new`;
+        return `\`${parts.join(" · ")} · ctx ${usedPct}% — consider /new\``;
       }
       parts.push(`ctx ${usedPct}%`);
     }
 
-    return `\uD83D\uDCCA ${parts.join(" \u00B7 ")}`;
+    return `\`${parts.join(" · ")}\``;
   }
 
   getStatus(projectName: string, projectPath: string, model: string, mode: string, sessionId: string | null): string {
