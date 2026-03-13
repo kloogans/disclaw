@@ -15,9 +15,9 @@ export async function setupCommand(): Promise<void> {
   const { allPassed, results } = runAllPrerequisites();
   for (const r of results) {
     if (r.pass) {
-      success(`${r.label}${r.detail ? ` ${c.dim}— ${r.detail}${c.reset}` : ""}`);
+      success(`${r.label}${r.detail ? ` ${c.dim}- ${r.detail}${c.reset}` : ""}`);
     } else {
-      fail(`${r.label}${r.detail ? ` ${c.dim}— ${r.detail}${c.reset}` : ""}`);
+      fail(`${r.label}${r.detail ? ` ${c.dim}- ${r.detail}${c.reset}` : ""}`);
     }
   }
 
@@ -66,7 +66,7 @@ export async function setupCommand(): Promise<void> {
       spinner.start();
       const result = await validateDiscordToken(token);
       if (result.valid && result.botInfo) {
-        spinner.stop(`${c.green}✓${c.reset} Token valid — ${c.bold}${result.botInfo.username}${c.reset}`);
+        spinner.stop(`${c.green}✓${c.reset} Token valid - ${c.bold}${result.botInfo.username}${c.reset}`);
         discordBotToken = token;
         break;
       }
@@ -88,7 +88,7 @@ export async function setupCommand(): Promise<void> {
 
     const discordGuildId = (await rl.question(`  ${c.bold}Server ID:${c.reset} `)).trim();
     if (!discordGuildId || !/^\d+$/.test(discordGuildId)) {
-      fail("Invalid server ID — must be a numeric snowflake.");
+      fail("Invalid server ID, must be a numeric snowflake.");
       process.exit(1);
     }
     success("Valid server ID");
@@ -102,7 +102,7 @@ export async function setupCommand(): Promise<void> {
 
     const userId = (await rl.question(`  ${c.bold}Your Discord user ID:${c.reset} `)).trim();
     if (!userId || !/^\d+$/.test(userId)) {
-      fail("Invalid user ID — must be a numeric snowflake.");
+      fail("Invalid user ID, must be a numeric snowflake.");
       process.exit(1);
     }
     success("Valid user ID");

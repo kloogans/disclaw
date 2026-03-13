@@ -20,7 +20,7 @@ export function checkNodeVersion(): CheckResult {
   return {
     label: "Node.js >= 22",
     pass,
-    detail: pass ? version : `${version} — upgrade: https://nodejs.org`,
+    detail: pass ? version : `${version} - upgrade: https://nodejs.org`,
   };
 }
 
@@ -33,7 +33,7 @@ export function checkClaudeAuth(): CheckResult {
   return {
     label: "Claude Code authenticated",
     pass,
-    detail: pass ? "logged in" : "not authenticated — run: claude auth login",
+    detail: pass ? "logged in" : "not authenticated - run: claude auth login",
   };
 }
 
@@ -46,7 +46,7 @@ export function runAllPrerequisites(): { allPassed: boolean; results: CheckResul
 export function printCheckResults(results: CheckResult[]): void {
   for (const r of results) {
     const icon = r.pass ? "✓" : "✗";
-    console.log(`  ${icon} ${r.label}${r.detail ? ` — ${r.detail}` : ""}`);
+    console.log(`  ${icon} ${r.label}${r.detail ? ` - ${r.detail}` : ""}`);
   }
 }
 

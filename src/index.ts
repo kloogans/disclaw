@@ -10,12 +10,13 @@ import { removeCommand } from "./cli/remove.js";
 import { tokenUpdateCommand } from "./cli/token-update.js";
 import { logsCommand } from "./cli/logs.js";
 import { doctorCommand } from "./cli/doctor.js";
+import { VERSION } from "./version.js";
 
 const program = new Command();
 
-program.name("disclaw").description("Remote Claude Code control via Discord").version("0.2.2");
+program.name("disclaw").description("Remote Claude Code control via Discord").version(VERSION);
 
-program.command("setup").description("First-time setup — configure Discord bot and server").action(setupCommand);
+program.command("setup").description("First-time setup, configure Discord bot and server").action(setupCommand);
 
 // Hidden alias for backward compatibility
 program.command("init", { hidden: true }).action(setupCommand);
@@ -94,7 +95,7 @@ program
       const model = p.model ?? config.defaults.model;
       const mode = p.permissionMode ?? config.defaults.permissionMode;
       const type = p.channelType ?? "text";
-      console.log(`  ${p.name} — ${type} channel ${p.channelId} (${model}, ${mode} mode)`);
+      console.log(`  ${p.name} - ${type} channel ${p.channelId} (${model}, ${mode} mode)`);
     }
     console.log(`\n${config.projects.length} project(s) registered.`);
   });
@@ -126,7 +127,7 @@ program
   .option("-n, --lines <count>", "Number of lines to show", "50")
   .action(logsCommand);
 
-program.command("doctor").description("Health check — verify system dependencies").action(doctorCommand);
+program.command("doctor").description("Health check, verify system dependencies").action(doctorCommand);
 
 program
   .command("tray")

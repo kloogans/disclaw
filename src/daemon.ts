@@ -1,5 +1,6 @@
 import { loadConfig } from "./config/store.js";
 import { writePidFile, removePidFile, isDaemonRunning, readPidFile, pruneThreadSessions } from "./config/state.js";
+import { VERSION } from "./version.js";
 import { DiscordBot } from "./bot/discord-client.js";
 import { createLogger } from "./utils/logger.js";
 import { cleanupMedia } from "./media/cleanup.js";
@@ -140,7 +141,7 @@ async function main(): Promise<void> {
   }
 
   writePidFile();
-  logger.info({ pid: process.pid }, "Daemon starting");
+  logger.info({ pid: process.pid, version: VERSION }, "disclaw starting");
 
   const config = loadConfig();
 
