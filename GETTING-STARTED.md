@@ -116,7 +116,8 @@ Send a file. Claude can read and process it.
 | `/undo` | Revert last file changes |
 | `/diff` | Show uncommitted changes and recent commits |
 | `/sessions` | List past sessions (click any to resume) |
-| `/handoff` | Get a CLI command to continue in Claude Code |
+| `/handoff` | Save session summary and hand off to a fresh context |
+| `/resume-cli` | Get a CLI command to continue in Claude Code |
 
 ### Live feedback while Claude works
 
