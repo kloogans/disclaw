@@ -44,6 +44,7 @@ export class ProjectHandler {
   private pendingQueue: string[] = [];
   private lastPromptSuggestion: string | null = null;
   private sessionPinned = false;
+  private lastPinnedSessionId: string | null = null;
 
   private stream: StreamManager;
   private git: GitHelper;
@@ -91,8 +92,10 @@ export class ProjectHandler {
           this.handleResult(result, costUsd, usage),
         onError: (error: string) => this.handleError(error),
         onStreamEnd: () => this.handleStreamEnd(),
-        onSessionId: () => {
-          this.sessionPinned = false;
+        onSessionId: (sessionId: string) => {
+          if (sessionId !== this.lastPinnedSessionId) {
+            this.sessionPinned = false;
+          }
         },
         onPermissionRequest: (
           toolName: string,
@@ -424,6 +427,7 @@ export class ProjectHandler {
     // Pin session ID once at the start of each session
     if (!this.sessionPinned && this.sessionManager.currentSessionId) {
       this.sessionPinned = true;
+      this.lastPinnedSessionId = this.sessionManager.currentSessionId;
       try {
         const pinMsg = await this.channel.send(`new session \`${this.sessionManager.currentSessionId}\``);
         await pinMsg.pin();
